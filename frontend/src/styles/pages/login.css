@@ -1,0 +1,96 @@
+/* frontend/src/styles/pages/login.css */
+
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--verde-degradado-claro) 0%, var(--verde-degradado-oscuro) 100%);
+  padding: var(--spacing-md);
+}
+
+.login-card {
+  background-color: var(--color-surface);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 400px;
+  padding: var(--spacing-xxl);
+  text-align: center;
+}
+
+.login-title {
+  color: var(--verde-intenso);
+  margin-bottom: var(--spacing-sm);
+}
+
+.login-subtitle {
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xl);
+}
+
+.login-form {
+  text-align: left;
+}
+
+.login-form-group {
+  margin-bottom: var(--spacing-lg);
+}
+
+.login-label {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.login-input {
+  width: 100%;
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.login-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(44, 171, 44, 0.1);
+  outline: none;
+}
+
+.login-button {
+  width: 100%;
+  padding: var(--spacing-md);
+  background-color: var(--color-primary);
+  color: var(--blanco-puro);
+  border: none;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.login-button:hover {
+  background-color: var(--color-secondary);
+}
+
+.login-message {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.login-message-success {
+  background-color: var(--verde-degradado-claro);
+  color: var(--verde-degradado-oscuro);
+}
+
+.login-message-error {
+  background-color: #fee;
+  color: #c33;
+}

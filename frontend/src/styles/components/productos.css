@@ -1,0 +1,310 @@
+.productos-header {
+  background-color: var(--primary-color);
+  color: var(--text-light);
+  padding: var(--spacing-md) var(--spacing-xl);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.productos-title {
+  font-size: var(--font-size-xxl);
+  font-weight: 700;
+  margin: 0;
+}
+
+.productos-subtitle {
+  font-size: var(--font-size-base);
+  opacity: 0.8;
+  margin: 0;
+}
+
+.productos-user {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.productos-content {
+  padding: var(--spacing-xl);
+}
+
+.productos-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.productos-filters {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+.productos-search {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.productos-search-input {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) 2.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-base);
+}
+
+.productos-search-input:focus {
+  outline: none;
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.25);
+}
+
+.productos-search-icon {
+  position: absolute;
+  right: var(--spacing-sm);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+}
+
+.productos-categories {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.productos-category-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.productos-category-btn:hover {
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+}
+
+.productos-category-btn.active {
+  background-color: var(--secondary-color);
+  color: var(--text-light);
+  border-color: var(--secondary-color);
+}
+
+.productos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.producto-card {
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--box-shadow);
+  overflow: hidden;
+  transition: var(--transition);
+}
+
+.producto-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.producto-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  background-color: var(--bg-secondary);
+}
+
+.producto-content {
+  padding: var(--spacing-md);
+}
+
+.producto-category {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--info-color);
+  color: var(--text-light);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  margin-bottom: var(--spacing-sm);
+}
+
+.producto-name {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: var(--spacing-xs);
+}
+
+.producto-description {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-md);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.producto-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.producto-price {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--success-color);
+}
+
+.producto-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.producto-btn {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: none;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.producto-btn-edit {
+  background-color: var(--warning-color);
+  color: var(--text-light);
+}
+
+.producto-btn-edit:hover {
+  background-color: #e67e22;
+}
+
+.producto-btn-delete {
+  background-color: var(--accent-color);
+  color: var(--text-light);
+}
+
+.producto-btn-delete:hover {
+  background-color: #c0392b;
+}
+
+.producto-form {
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--box-shadow);
+  padding: var(--spacing-xl);
+  margin-bottom: var(--spacing-xl);
+}
+
+.producto-form-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: var(--spacing-lg);
+}
+
+.producto-form-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.producto-form-label {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.producto-form-input,
+.producto-form-textarea {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-base);
+}
+
+.producto-form-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.producto-form-input:focus,
+.producto-form-textarea:focus {
+  outline: none;
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.25);
+}
+
+.producto-form-select {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-base);
+}
+
+.producto-form-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.producto-form-button {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.producto-form-submit {
+  background-color: var(--primary-color);
+  color: var(--text-light);
+}
+
+.producto-form-submit:hover {
+  background-color: #34495e;
+}
+
+.producto-form-cancel {
+  background-color: var(--text-secondary);
+  color: var(--text-light);
+}
+
+.producto-form-cancel:hover {
+  background-color: #6c7a89;
+}
+
+@media (max-width: 768px) {
+  .productos-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .productos-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .productos-search {
+    max-width: 100%;
+  }
+}

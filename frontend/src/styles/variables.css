@@ -1,0 +1,60 @@
+/* frontend/src/styles/variables.css */
+
+:root {
+  /* 🎨 Paleta principal */
+  --verde-intenso: #2CAB2C;
+  --verde-claro: #28A745;
+  --blanco-puro: #FFFFFF;
+  --negro-suave: #222222;
+
+  /* 🌿 Paleta secundaria */
+  --verde-degradado-claro: #A6D98C;
+  --verde-degradado-oscuro: #2E7D32;
+  --gris-claro: #F4F4F4;
+  --gris-medio: #DDDDDD;
+  --gris-oscuro: #444444;
+  --gris-texto: #555555;
+  --azul-cielo: #4FA3E0;
+
+  /* 📚 Sugerencias de uso */
+  --color-primary: var(--verde-intenso);
+  --color-secondary: var(--verde-degradado-oscuro);
+  --color-accent: var(--azul-cielo);
+  --color-background: var(--blanco-puro);
+  --color-surface: var(--gris-claro);
+  --color-text: var(--negro-suave);
+  --color-text-secondary: var(--gris-texto);
+  --color-border: var(--gris-medio);
+
+  /* Espaciado */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-xxl: 3rem;
+
+  /* Bordes */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+
+  /* Sombras */
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+
+  /* Tipografía */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-xxl: 1.5rem;
+  --font-size-xxxl: 2rem;
+
+  /* Transiciones */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+}

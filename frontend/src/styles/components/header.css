@@ -1,0 +1,64 @@
+/* frontend/src/styles/components/header.css */
+
+.header {
+  background-color: var(--negro-suave);
+  color: var(--blanco-puro);
+  padding: var(--spacing-md) var(--spacing-xl);
+  box-shadow: var(--shadow-md);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-logo {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  margin: 0;
+  color: var(--verde-intenso);
+}
+
+.header-subtitle {
+  font-size: var(--font-size-sm);
+  opacity: 0.8;
+  margin: 0;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.header-nav {
+  display: flex;
+  gap: var(--spacing-lg);
+}
+
+.header-nav-link {
+  color: var(--blanco-puro);
+  text-decoration: none;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.header-nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.header-nav-link.active {
+  background-color: var(--verde-intenso);
+}

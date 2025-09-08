@@ -1,0 +1,11 @@
+@import './styles/variables.css';
+@import './styles/global.css';
+@import './styles/components/buttons.css';
+@import './styles/components/cards.css';
+@import './styles/components/forms.css';
+@import './styles/components/header.css';
+@import './styles/components/tables.css';
+@import './styles/pages/login.css';
+@import './styles/pages/dashboard.css';
+@import './styles/pages/mesas.css';
+@import './styles/pages/productos.css';
