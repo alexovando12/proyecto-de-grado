@@ -6,6 +6,9 @@ import Dashboard from './pages/Dashboard.jsx';
 import MesasPage from './pages/MesasPage.jsx';
 import ProductosPage from './pages/ProductosPage.jsx';
 import PedidosPage from './pages/PedidosPage.jsx';
+import CocinaPage from './pages/CocinaPage.jsx';
+import InventarioPage from './pages/InventarioPage.jsx';
+import ReportesPage from './pages/ReportesPage.jsx';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -51,6 +54,21 @@ function App() {
             <Route path="/pedidos" element={
               <ProtectedRoute>
                 <PedidosPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/cocina" element={
+              <ProtectedRoute>
+                <CocinaPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/inventario" element={
+              <ProtectedRoute>
+                <InventarioPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/reportes" element={
+              <ProtectedRoute>
+                <ReportesPage />
               </ProtectedRoute>
             } />
             <Route path="*" element={<Navigate to="/" replace />} />

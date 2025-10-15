@@ -1,33 +1,47 @@
 const pool = require('../config/db');
+const DetallePedido = require('./DetallePedido');
 
 class Pedido {
-  static async obtenerTodos() {
+  static async obtenerTodosConDetalles() {
     const result = await pool.query(`
-      SELECT p.*, m.numero as mesa_numero, u.nombre as mozo_nombre
+      SELECT p.*, m.numero AS mesa_numero, u.nombre AS mozo_nombre
       FROM pedidos p
       LEFT JOIN mesas m ON p.mesa_id = m.id
       LEFT JOIN usuarios u ON p.usuario_id = u.id
       ORDER BY p.fecha_creacion DESC
     `);
-    return result.rows;
+
+    const pedidos = [];
+    for (const p of result.rows) {
+      const detalles = await DetallePedido.obtenerPorPedido(p.id);
+      pedidos.push({ ...p, detalles });
+    }
+    return pedidos;
   }
 
-  static async obtenerPorId(id) {
+  static async obtenerPorIdConDetalles(id) {
     const result = await pool.query(`
-      SELECT p.*, m.numero as mesa_numero, u.nombre as mozo_nombre
+      SELECT p.*, m.numero AS mesa_numero, u.nombre AS mozo_nombre
       FROM pedidos p
       LEFT JOIN mesas m ON p.mesa_id = m.id
       LEFT JOIN usuarios u ON p.usuario_id = u.id
       WHERE p.id = $1
     `, [id]);
-    return result.rows[0];
+
+    const pedido = result.rows[0];
+    if (!pedido) return null;
+
+    const detalles = await DetallePedido.obtenerPorPedido(id);
+    return { ...pedido, detalles };
   }
 
   static async crear(pedido) {
-    const { mesa_id, usuario_id } = pedido;
+    const { mesa_id, usuario_id, estado, total } = pedido;
     const result = await pool.query(
-      'INSERT INTO pedidos (mesa_id, usuario_id, estado, total, fecha_creacion) VALUES ($1, $2, $3, $4, NOW()) RETURNING *',
-      [mesa_id, usuario_id, 'pendiente', 0]
+      `INSERT INTO pedidos (mesa_id, usuario_id, estado, total, fecha_creacion) 
+       VALUES ($1, $2, $3, $4, NOW()) 
+       RETURNING *`,
+      [mesa_id, usuario_id, estado, total]
     );
     return result.rows[0];
   }
@@ -35,39 +49,57 @@ class Pedido {
   static async actualizar(id, pedido) {
     const { mesa_id, usuario_id, estado, total } = pedido;
     const result = await pool.query(
-      'UPDATE pedidos SET mesa_id = $1, usuario_id = $2, estado = $3, total = $4, fecha_actualizacion = NOW() WHERE id = $5 RETURNING *',
+      `UPDATE pedidos 
+       SET mesa_id = $1, usuario_id = $2, estado = $3, total = $4, fecha_actualizacion = NOW() 
+       WHERE id = $5 
+       RETURNING *`,
       [mesa_id, usuario_id, estado, total, id]
     );
     return result.rows[0];
   }
 
   static async eliminar(id) {
-    const result = await pool.query('DELETE FROM pedidos WHERE id = $1 RETURNING *', [id]);
+    const result = await pool.query(
+      'DELETE FROM pedidos WHERE id = $1 RETURNING *',
+      [id]
+    );
     return result.rows[0];
   }
 
-  static async obtenerPorMesa(mesa_id) {
+  static async obtenerPorMesaConDetalles(mesa_id) {
     const result = await pool.query(`
-      SELECT p.*, m.numero as mesa_numero, u.nombre as mozo_nombre
+      SELECT p.*, m.numero AS mesa_numero, u.nombre AS mozo_nombre
       FROM pedidos p
       LEFT JOIN mesas m ON p.mesa_id = m.id
       LEFT JOIN usuarios u ON p.usuario_id = u.id
       WHERE p.mesa_id = $1 AND p.estado != 'entregado'
       ORDER BY p.fecha_creacion
     `, [mesa_id]);
-    return result.rows;
+
+    const pedidos = [];
+    for (const p of result.rows) {
+      const detalles = await DetallePedido.obtenerPorPedido(p.id);
+      pedidos.push({ ...p, detalles });
+    }
+    return pedidos;
   }
 
-  static async obtenerPorEstado(estado) {
+  static async obtenerPorEstadoConDetalles(estado) {
     const result = await pool.query(`
-      SELECT p.*, m.numero as mesa_numero, u.nombre as mozo_nombre
+      SELECT p.*, m.numero AS mesa_numero, u.nombre AS mozo_nombre
       FROM pedidos p
       LEFT JOIN mesas m ON p.mesa_id = m.id
       LEFT JOIN usuarios u ON p.usuario_id = u.id
       WHERE p.estado = $1
-      ORDER BY p.fecha_creacion
+      ORDER BY p.fecha_creacion ASC
     `, [estado]);
-    return result.rows;
+
+    const pedidos = [];
+    for (const p of result.rows) {
+      const detalles = await DetallePedido.obtenerPorPedido(p.id);
+      pedidos.push({ ...p, detalles });
+    }
+    return pedidos;
   }
 }
 

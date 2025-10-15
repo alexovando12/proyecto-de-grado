@@ -86,4 +86,5 @@ exports.login = async (req, res) => {
     console.error('Stack:', error.stack);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
+  
 };

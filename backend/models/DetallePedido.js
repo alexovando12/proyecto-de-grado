@@ -3,7 +3,7 @@ const pool = require('../config/db');
 class DetallePedido {
   static async obtenerPorPedido(pedido_id) {
     const result = await pool.query(`
-      SELECT dp.*, pr.nombre as producto_nombre, pr.precio
+      SELECT dp.*, pr.nombre AS producto_nombre, pr.precio
       FROM detalles_pedido dp
       LEFT JOIN productos pr ON dp.producto_id = pr.id
       WHERE dp.pedido_id = $1
@@ -15,7 +15,8 @@ class DetallePedido {
   static async crear(detalle) {
     const { pedido_id, producto_id, cantidad, notas, precio } = detalle;
     const result = await pool.query(
-      'INSERT INTO detalles_pedido (pedido_id, producto_id, cantidad, notas, precio, estado) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      `INSERT INTO detalles_pedido (pedido_id, producto_id, cantidad, notas, precio, estado) 
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [pedido_id, producto_id, cantidad, notas, precio, 'pendiente']
     );
     return result.rows[0];
@@ -24,14 +25,20 @@ class DetallePedido {
   static async actualizar(id, detalle) {
     const { cantidad, notas, estado } = detalle;
     const result = await pool.query(
-      'UPDATE detalles_pedido SET cantidad = $1, notas = $2, estado = $3 WHERE id = $4 RETURNING *',
+      `UPDATE detalles_pedido 
+       SET cantidad = $1, notas = $2, estado = $3 
+       WHERE id = $4 
+       RETURNING *`,
       [cantidad, notas, estado, id]
     );
     return result.rows[0];
   }
 
   static async eliminar(id) {
-    const result = await pool.query('DELETE FROM detalles_pedido WHERE id = $1 RETURNING *', [id]);
+    const result = await pool.query(
+      'DELETE FROM detalles_pedido WHERE id = $1 RETURNING *',
+      [id]
+    );
     return result.rows[0];
   }
 

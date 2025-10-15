@@ -1,13 +1,19 @@
 ﻿const express = require('express');
 const cors = require('cors');
+const http = require('http');
+const { Server } = require('socket.io');
+
 const authRoutes = require('./routes/authRoutes');
 const mesaRoutes = require('./routes/mesaRoutes');
 const productoRoutes = require('./routes/productoRoutes');
 const pedidoRoutes = require('./routes/pedidoRoutes');
-
+const reporteRoutes = require('./routes/reporteRoutes');
+const inventarioRoutes = require('./routes/inventarioRoutes');
 const app = express();
 
-// Middleware para logging de peticiones
+// =======================
+// Middleware de logging
+// =======================
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   if (req.body && Object.keys(req.body).length > 0) {
@@ -16,21 +22,54 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware
+// =======================
+// Middleware principal
+// =======================
 app.use(cors());
 app.use(express.json());
 
-// Rutas de prueba
+// =======================
+// Integración con Socket.IO
+// =======================
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*", // ⚠️ cámbialo si tu frontend está en otro dominio
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  }
+});
+
+// ✅ Middleware para inyectar io en req (antes de las rutas)
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+io.on('connection', (socket) => {
+  console.log('🟢 Cliente conectado:', socket.id);
+
+  socket.on('disconnect', () => {
+    console.log('🔴 Cliente desconectado:', socket.id);
+  });
+});
+
+// =======================
+// Rutas base
+// =======================
 app.get('/', (req, res) => {
   res.send('API de Garden Gates funcionando!');
 });
 
-// Rutas de autenticación
 app.use('/api/auth', authRoutes);
 app.use('/api/mesas', mesaRoutes);
 app.use('/api/productos', productoRoutes);
 app.use('/api/pedidos', pedidoRoutes);
-// Middleware de manejo de errores detallado
+app.use('/api/reportes', reporteRoutes);
+app.use('/api/inventario', inventarioRoutes);
+// =======================
+// Manejo de errores
+// =======================
 app.use((err, req, res, next) => {
   console.error('=== ERROR DETALLADO ===');
   console.error('Timestamp:', new Date().toISOString());
@@ -40,16 +79,19 @@ app.use((err, req, res, next) => {
   console.error('Error:', err);
   console.error('Stack:', err.stack);
   console.error('======================');
-  
-  res.status(500).json({ 
+
+  res.status(500).json({
     error: 'Error interno del servidor',
     details: err.message,
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
 
-// Iniciar servidor
+// =======================
+// Levantar servidor
+// =======================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  console.log(`📡 Socket.IO habilitado en el mismo puerto`);
 });

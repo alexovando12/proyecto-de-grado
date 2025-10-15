@@ -22,22 +22,18 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
   const [notas, setNotas] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Sincroniza si cambia la mesa seleccionada desde el padre
   useEffect(() => {
     setSelectedMesa(mesaSeleccionada ? String(mesaSeleccionada) : '');
   }, [mesaSeleccionada]);
 
-  // Carga inicial y refresco cuando otro componente anuncie cambios
   useEffect(() => {
     cargarMesas();
     cargarProductos();
-
     const handler = () => cargarMesas();
     window.addEventListener('mesa-status-changed', handler);
     return () => window.removeEventListener('mesa-status-changed', handler);
   }, []);
 
-  /* ---------- Helpers ---------- */
   const toMoney = (v) => {
     const n = Number(String(v ?? '').replace(',', '.'));
     if (!Number.isFinite(n)) return '—';
@@ -72,10 +68,8 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
     };
   };
 
-  /* ---------- Data loaders ---------- */
   const cargarMesas = async () => {
     try {
-      // 1) Cargar todas las mesas
       const baseCruda = await mesaService.obtenerTodas();
       const base = (Array.isArray(baseCruda) ? baseCruda : []).map(m => ({
         ...m,
@@ -84,7 +78,6 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
         numero: m?.numero ?? m?.id ?? '-',
       }));
 
-      // 2) Para cada mesa, consultar si tiene pedidos activos
       const pedidosPorMesa = await Promise.all(
         base.map(async (m) => {
           try {
@@ -106,7 +99,6 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
       setMesasDisponibles(disp);
       setMesasNoDisponibles(noDisp);
 
-      // Si la mesa seleccionada ya no está disponible, resetea
       if (selectedMesa) {
         const mesaSel = enriquecidas.find(m => String(m.id) === String(selectedMesa));
         if (!mesaSel || (mesaSel.estado ?? 'disponible') !== 'disponible') {
@@ -136,7 +128,6 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
     }
   };
 
-  /* ---------- Items ---------- */
   const agregarItem = (producto) => {
     const existingItem = items.find(item => item.producto_id === producto.id);
     const precioNum = typeof producto.precio === 'number' ? producto.precio : parseFloat(producto.precio ?? 0);
@@ -183,7 +174,6 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
     return items.reduce((total, item) => total + (Number(item.precio) * Number(item.cantidad)), 0);
   };
 
-  /* ---------- Selección de mesa ---------- */
   const handleSelectMesa = (e) => {
     const val = e.target.value;
     if (val === '') {
@@ -197,50 +187,44 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
       return;
     }
     if ((mesaSel.estado ?? 'disponible') !== 'disponible') {
-      alert(`La mesa ${mesaSel.numero} está ${estadoLabel(mesaSel.estado).toLowerCase()}. No se puede seleccionar.`);
+      alert(`La mesa ${mesaSel.numero} está ${estadoLabel(mesaSel.estado).toLowerCase()}.`);
       setSelectedMesa('');
       return;
     }
     setSelectedMesa(val);
   };
 
-  /* ---------- Verificación final antes de crear ---------- */
   const recheckMesaDisponible = async (mesaId) => {
     try {
-      // Revisa pedidos activos de esa mesa
       const pedidos = await pedidoService.obtenerPorMesa(Number(mesaId));
       if (tienePedidoActivo(pedidos)) return false;
 
-      // Solo si tu backend tiene GET /mesas/:id, corroboramos el estado visible
       if (HAS_MESAS_BY_ID_ENDPOINT) {
         try {
           const mesa = await mesaService.obtenerPorId(Number(mesaId));
           if (mesa && (mesa.estado ?? 'disponible') !== 'disponible') return false;
-        } catch {/* ignoramos */}
+        } catch {}
       }
       return true;
     } catch {
-      // Por seguridad, si falla la verificación, bloqueamos
       return false;
     }
   };
 
-  /* ---------- Submit ---------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedMesa || items.length === 0) {
-      alert('Por favor selecciona una mesa disponible y añade productos');
+      alert('Selecciona una mesa disponible y añade productos');
       return;
     }
 
     setLoading(true);
     try {
-      // Verificación final en backend
       const ok = await recheckMesaDisponible(selectedMesa);
       if (!ok) {
         await cargarMesas();
         setLoading(false);
-        alert('No se puede crear el pedido: la mesa ya está ocupada o reservada.');
+        alert('La mesa ya está ocupada o reservada.');
         return;
       }
 
@@ -258,7 +242,6 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
 
       const response = await pedidoService.crear(pedido);
 
-      // Intento de marcar mesa ocupada SOLO si tu backend lo soporta (no habrá 404)
       if (HAS_MESAS_ESTADO_ENDPOINT) {
         try {
           await mesaService.actualizarEstado(Number(selectedMesa), 'ocupada');
@@ -267,7 +250,6 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
         }
       }
 
-      // Limpieza + refrescos
       setItems([]);
       setNotas('');
       setSelectedMesa('');
@@ -278,13 +260,12 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
     } catch (error) {
       const msg = error?.response?.data?.message || error?.response?.data || error.message;
       console.error('Error al crear pedido:', msg);
-      alert(`Error al crear el pedido: ${msg}`);
+      alert(`Error: ${msg}`);
     } finally {
       setLoading(false);
     }
   };
 
-  /* ---------- UI ---------- */
   return (
     <div className="pedido-form">
       <h3 className="pedido-form-title">Nuevo Pedido</h3>
@@ -297,8 +278,6 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
           onChange={handleSelectMesa}
         >
           <option value="">Seleccionar una mesa...</option>
-
-          {/* Disponibles (seleccionables) */}
           {mesasDisponibles.length > 0 && (
             <optgroup label="Disponibles">
               {mesasDisponibles.map(mesa => (
@@ -308,8 +287,6 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
               ))}
             </optgroup>
           )}
-
-          {/* No disponibles (deshabilitadas) */}
           {mesasNoDisponibles.length > 0 && (
             <optgroup label="No disponibles">
               {mesasNoDisponibles.map(mesa => (
@@ -320,9 +297,6 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
             </optgroup>
           )}
         </select>
-        <small className="form-text">
-          Las mesas ocupadas o reservadas aparecen deshabilitadas.
-        </small>
       </div>
 
       <div className="pedido-form-section">

@@ -1,9 +1,7 @@
-// src/services/pedidoService.js
 import api from './api.js';
 
-// Estados permitidos por el UI (ajusta si tu backend difiere)
-const ALLOWED_STATES = ['pendiente', 'confirmado', 'preparando', 'listo', 'entregado']; 
-// Si tu backend NO soporta 'cancelado', déjalo fuera. Si lo soporta, agrégalo aquí.
+// Estados permitidos
+const ALLOWED_STATES = ['pendiente', 'confirmado', 'preparando', 'listo', 'entregado', 'cancelado'];
 
 const sanitizeEstado = (estado) => {
   const e = String(estado || '').trim().toLowerCase();
@@ -53,34 +51,15 @@ export const pedidoService = {
     return data;
   },
 
-  // Intenta PUT /pedidos/:id/estado; si tu backend no tiene ese endpoint,
-  // hace fallback a PATCH /pedidos/:id con { estado }.
   actualizarEstado: async (id, estado) => {
     const idNum = Number(id);
     const e = sanitizeEstado(estado);
 
-    try {
-      const { data } = await api.put(
-        `/pedidos/${idNum}/estado`,
-        { estado: e },
-        { headers: { 'Content-Type': 'application/json' } }
-      );
-      return data;
-    } catch (err) {
-      const status = err?.response?.status;
-      // Si la ruta no existe o no acepta PUT, intenta PATCH genérico
-      if (status === 404 || status === 405 || status === 501) {
-        const { data } = await api.patch(
-          `/pedidos/${idNum}`,
-          { estado: e },
-          { headers: { 'Content-Type': 'application/json' } }
-        );
-        return data;
-      }
-
-      // Propaga el error original con mensaje útil del backend
-      const msg = err?.response?.data?.message || err?.response?.data || err.message;
-      throw new Error(`Backend respondió ${status || ''}: ${msg}`);
-    }
+    const { data } = await api.put(
+      `/pedidos/${idNum}/estado`,
+      { estado: e },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+    return data;
   },
 };

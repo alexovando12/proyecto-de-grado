@@ -7,6 +7,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Cargar datos de usuario y token desde localStorage
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
@@ -23,6 +24,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
+  // 🔹 Login
   const login = async (credentials) => {
     try {
       console.log('AuthContext: Iniciando login con:', credentials);
@@ -43,10 +45,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // 🔹 Logout
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+  };
+
+  // 🔹 Verificar rol
+  const hasRole = (roles) => {
+    if (!user || !user.rol) return false;
+    return roles.includes(user.rol);
   };
 
   const value = {
@@ -54,7 +63,8 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     loading,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    hasRole // 👉 Ahora se expone al dashboard
   };
 
   return (
@@ -64,7 +74,7 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Exportar el hook personalizado
+// Hook personalizado
 export const useAuth = () => {
   const context = useContext(AuthContext);
   
