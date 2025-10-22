@@ -39,12 +39,12 @@ prepararProducto: async ({ productoId, cantidad }) => {
 
     const response = await api.post(
       '/inventario/productos-preparados/preparar',
-      { productoId, cantidad } // 👈 ya no hace falta JSON.stringify
+      { productoId, cantidad }
     );
 
     console.log('✅ Respuesta del backend:', response.data);
 
-    // ⚡ Dispara evento personalizado para actualizar vista automáticamente
+    // Dispara evento personalizado para actualizar vista automáticamente
     const event = new CustomEvent('inventarioActualizado');
     window.dispatchEvent(event);
 

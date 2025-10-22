@@ -137,32 +137,32 @@ const [productoForm, setProductoForm] = useState({
             setError('Error al cargar ingredientes: ' + (err.response?.data?.error || err.message));
         }
     };
-
-    const cargarProductosPreparados = async () => {
+const cargarProductosPreparados = async () => {
+  try {
+    console.log('Cargando productos preparados...');
+    const data = await productosPreparadosService.obtenerProductosPreparados();
+    
+    // Cargar recetas para cada producto
+    const productosConReceta = await Promise.all(
+      data.map(async (producto) => {
         try {
-            console.log('Cargando productos preparados...');
-            const data = await productosPreparadosService.obtenerProductosPreparados();
-            
-            // Cargar recetas para cada producto
-            const productosConReceta = await Promise.all(
-                data.map(async (producto) => {
-                    try {
-                        const receta = await productosPreparadosService.obtenerReceta(producto.id);
-                        return { ...producto, receta };
-                    } catch (error) {
-                        console.error(`Error al cargar receta del producto ${producto.id}:`, error);
-                        return { ...producto, receta: [] };
-                    }
-                })
-            );
-            
-            setProductosPreparados(productosConReceta);
-            console.log('Productos preparados con recetas cargados:', productosConReceta);
-        } catch (err) {
-            console.error('Error al cargar productos preparados:', err);
-            setError('Error al cargar productos preparados: ' + (err.response?.data?.error || err.message));
+          const receta = await productosPreparadosService.obtenerReceta(producto.id);
+          return { ...producto, receta };
+        } catch (error) {
+          console.error(`Error al cargar receta del producto ${producto.id}:`, error);
+          // Si hay un error, continuamos con receta vacía
+          return { ...producto, receta: [] };
         }
-    };
+      })
+    );
+    
+    setProductosPreparados(productosConReceta);
+    console.log('Productos preparados con recetas cargados:', productosConReceta);
+  } catch (err) {
+    console.error('Error al cargar productos preparados:', err);
+    setError('Error al cargar productos preparados: ' + (err.response?.data?.error || err.message));
+  }
+};
 
     const cargarAlertas = async () => {
         try {
@@ -231,70 +231,40 @@ const [productoForm, setProductoForm] = useState({
     };
 
     // Funciones para productos preparados
-    const handleSubmitProducto = async (e) => {
+const handleSubmitProducto = async (e) => {
   e.preventDefault();
   try {
     setLoading(true);
     setError(null);
 
-    let productoCreado;
+    // 🔹 Construir correctamente el objeto a enviar
+    const productoData = {
+      ...productoForm,
+      ingredientes: recetaItems.map(item => ({
+        ingrediente_id: parseInt(item.ingrediente_id),
+        cantidad: parseFloat(item.cantidad)
+      }))
+    };
 
-    if (editingProducto) {
-      // 🟡 Si estás editando, actualizás y luego recreás la receta
-      await productosPreparadosService.actualizarProductoPreparado(editingProducto.id, productoForm);
-      productoCreado = editingProducto;
-      await productosPreparadosService.eliminarRecetaPorProducto(editingProducto.id);
-    } else {
-      // 🟢 Crear nuevo producto y obtener su ID
-      const productoData = {
-        ...productoForm,
-        stock_actual: 0 // empieza en 0, luego se prepara
-      };
-      productoCreado = await productosPreparadosService.crearProductoPreparado(productoData);
-      console.log('✅ Producto creado en backend:', productoCreado);
+    console.log("📦 Enviando producto preparado:", productoData);
 
-      if (Array.isArray(productoCreado)) productoCreado = productoCreado[0];
-      if (!productoCreado || !productoCreado.id) throw new Error('El backend no devolvió un ID válido');
-      console.log('📦 ID del nuevo producto:', productoCreado.id);
-    }
+    // 🟢 Crear el producto en backend
+    const response = await productosPreparadosService.crearProductoPreparado(productoData);
+    console.log("✅ Respuesta del backend:", response);
 
-    // 🧂 Agregar ingredientes a la receta
-    for (const item of recetaItems) {
-      if (item.ingrediente_id && item.cantidad > 0) {
-        await productosPreparadosService.agregarIngredienteAReceta(
-          productoCreado.id,
-          item.ingrediente_id,
-          item.cantidad
-        );
-      }
-    }
-
-    // 🟢 Preparar automáticamente el producto recién creado
-    try {
-      console.log('🧩 Preparando automáticamente producto:', productoCreado.id, productoForm.stock_actual);
-      await inventarioService.prepararProducto({
-        productoId: productoCreado.id,
-        cantidad: productoForm.stock_actual || 1
-      });
-      console.log('✅ Producto preparado automáticamente');
-    } catch (error) {
-      console.error('❌ Error al preparar producto automáticamente:', error);
-      alert('El producto se creó, pero hubo un error al preparar automáticamente.');
-    }
-
-    // 🧹 Limpiar y recargar
+    alert("✅ Producto preparado creado correctamente");
     resetProductoForm();
     await cargarProductosPreparados();
     await cargarAlertas();
 
-    alert('✅ Producto preparado creado correctamente con su receta');
   } catch (err) {
-    console.error('❌ Error al guardar producto:', err);
-    setError('Error al guardar producto: ' + (err.response?.data?.error || err.message));
+    console.error("❌ Error al guardar producto:", err);
+    setError("Error al guardar producto: " + (err.response?.data?.error || err.message));
   } finally {
     setLoading(false);
   }
 };
+
 
 
 
@@ -336,18 +306,28 @@ const [productoForm, setProductoForm] = useState({
         setRecetaItems(nuevosItems);
     };
 
-    const cargarRecetaProducto = async (productoId) => {
-        try {
-            const receta = await productosPreparadosService.obtenerReceta(productoId);
-            setRecetaItems(receta.map(item => ({
-                ingrediente_id: item.ingrediente_id,
-                cantidad: item.cantidad
-            })));
-        } catch (error) {
-            console.error('Error al cargar receta:', error);
-            setRecetaItems([]);
-        }
-    };
+const cargarRecetaProducto = async (productoId) => {
+  try {
+    console.log(`🔍 Cargando receta para producto: ${productoId}`);
+    const receta = await productosPreparadosService.obtenerReceta(productoId);
+    console.log(`✅ Receta cargada:`, receta);
+    setRecetaItems(receta.map(item => ({
+      ingrediente_id: item.ingrediente_id,
+      cantidad: item.cantidad
+    })));
+  } catch (error) {
+    console.error(`❌ Error al cargar receta del producto ${productoId}:`, error);
+    // Si es un error 404, simplemente dejamos la receta vacía
+    if (error.response && error.response.status === 404) {
+      console.log(`⚠️ Receta no encontrada, dejando vacía`);
+      setRecetaItems([]);
+    } else {
+      // Para otros errores, también dejamos la receta vacía pero mostramos un mensaje
+      console.error('Error al cargar receta:', error.message);
+      setRecetaItems([]);
+    }
+  }
+};
 
     const handleEditProducto = async (producto) => {
         setEditingProducto(producto);
@@ -376,7 +356,7 @@ const handlePrepararProducto = async (productoId, cantidad) => {
     console.log('✅ Respuesta del backend:', response);
 
     alert(response.message || 'Producto preparado correctamente');
-    await cargarDatos(); // 👈 este sí refresca todo el inventario
+    await cargarDatos(); // Recargar todos los datos
   } catch (error) {
     console.error('❌ Error al preparar producto:', error);
     alert(error.response?.data?.error || 'Error al preparar producto');
@@ -852,68 +832,88 @@ const handlePrepararProducto = async (productoId, cantidad) => {
                         </div>
                     )}
                     
-                    {activeTab === 'productos-preparados' && (
-                        <div className="inventario-grid">
-                            {productosPreparados.length === 0 ? (
-                                <div className="empty-state">
-                                    <p>No hay productos preparados registrados</p>
-                                    <button 
-                                        className="btn btn-primary"
-                                        onClick={() => setShowProductoForm(true)}
-                                    >
-                                        Agregar Producto Preparado
-                                    </button>
-                                </div>
-                            ) : (
-                                productosPreparados.map(producto => (
-                                    <div key={producto.id} className={`ingrediente-card ${getStockClass(getStockStatus(producto.stock_actual, producto.stock_minimo))}`}>
-                                        <div className="ingrediente-header">
-                                            <h3 className="ingrediente-nombre">{producto.nombre}</h3>
-                                            <div className="ingrediente-acciones">
-                                                <button className="btn btn-icon" onClick={() => handleEditProducto(producto)} title="Editar" disabled={loading}>
-                                                    ✏️
-                                                </button>
-                                                <button className="btn btn-icon" onClick={() => handleDeleteProducto(producto.id)} title="Eliminar" disabled={loading}>
-                                                    🗑️
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="ingrediente-info">
-                                            <div className="ingrediente-info-item">
-                                                <span className="ingrediente-info-label">Unidad:</span>
-                                                <span className="ingrediente-info-value">{producto.unidad}</span>
-                                            </div>
-                                        </div>
-                                        <div className={`ingrediente-stock ${getStockClass(getStockStatus(producto.stock_actual, producto.stock_minimo))}`}>
-                                            <span className="ingrediente-stock-actual">{producto.stock_actual} {producto.unidad}</span>
-                                            <span className="ingrediente-stock-minimo">Mín: {producto.stock_minimo} {producto.unidad}</span>
-                                        </div>
-                                        <div className="ingrediente-status">
-                                            {getStockBadge(getStockStatus(producto.stock_actual, producto.stock_minimo))}
-                                        </div>
-                                        
-                                        {/* Botón para preparar producto */}
-                                        
-                                        {/* Mostrar receta del producto */}
-                                        <div className="producto-receta">
-                                            <h5>📝 Receta:</h5>
-                                            {producto.receta && producto.receta.length > 0 ? (
-                                                <ul className="receta-list">
-                                                    {producto.receta.map((item, index) => (
-                                                        <li key={index}>
-                                                            • {item.ingrediente_nombre}: {item.cantidad} {item.ingrediente_unidad}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            ) : (
-                                                <p className="no-receta">⚠️ No hay receta definida</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    )}
+{activeTab === 'productos-preparados' && (
+  <div className="inventario-grid">
+    {productosPreparados.length === 0 ? (
+      <div className="empty-state">
+        <p>No hay productos preparados registrados</p>
+        <button 
+          className="btn btn-primary"
+          onClick={() => setShowProductoForm(true)}
+        >
+          Agregar Producto Preparado
+        </button>
+      </div>
+    ) : (
+      productosPreparados.map(producto => (
+        <div key={producto.id} className={`ingrediente-card ${getStockClass(getStockStatus(producto.stock_actual, producto.stock_minimo))}`}>
+          <div className="ingrediente-header">
+            <h3 className="ingrediente-nombre">{producto.nombre}</h3>
+            <div className="ingrediente-acciones">
+              <button className="btn btn-icon" onClick={() => handleEditProducto(producto)} title="Editar" disabled={loading}>
+                ✏️
+              </button>
+              <button className="btn btn-icon" onClick={() => handleDeleteProducto(producto.id)} title="Eliminar" disabled={loading}>
+                🗑️
+              </button>
+            </div>
+          </div>
+          <div className="ingrediente-info">
+            <div className="ingrediente-info-item">
+              <span className="ingrediente-info-label">Tipo:</span>
+              <span className="ingrediente-info-value">{producto.tipo_inventario === 'preparado' ? 'Preparado' : 'General'}</span>
+            </div>
+            <div className="ingrediente-info-item">
+              <span className="ingrediente-info-label">Unidad:</span>
+              <span className="ingrediente-info-value">{producto.unidad}</span>
+            </div>
+          </div>
+          <div className={`ingrediente-stock ${getStockClass(getStockStatus(producto.stock_actual, producto.stock_minimo))}`}>
+            <span className="ingrediente-stock-actual">{producto.stock_actual} {producto.unidad}</span>
+            <span className="ingrediente-stock-minimo">Mín: {producto.stock_minimo} {producto.unidad}</span>
+          </div>
+          <div className="ingrediente-status">
+            {getStockBadge(getStockStatus(producto.stock_actual, producto.stock_minimo))}
+          </div>
+          
+          {/* Botón para preparar producto (solo para tipo 'preparado') */}
+          {producto.tipo_inventario === 'preparado' && (
+            <div className="producto-acciones">
+              <button 
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  const cantidad = prompt(`¿Cuántas unidades de ${producto.nombre} deseas preparar?`, '1');
+                  if (cantidad && !isNaN(cantidad) && parseFloat(cantidad) > 0) {
+                    handlePrepararProducto(producto.id, parseFloat(cantidad));
+                  }
+                }}
+                disabled={loading}
+              >
+                Preparar Producto
+              </button>
+            </div>
+          )}
+          
+          {/* Mostrar receta del producto */}
+          <div className="producto-receta">
+            <h5>📝 Receta:</h5>
+            {producto.receta && producto.receta.length > 0 ? (
+              <ul className="receta-list">
+                {producto.receta.map((item, index) => (
+                  <li key={index}>
+                    • {item.ingrediente_nombre}: {item.cantidad} {item.ingrediente_unidad}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="no-receta">⚠️ No hay receta definida</p>
+            )}
+          </div>
+        </div>
+      ))
+    )}
+  </div>
+)}
                     
                     {activeTab === 'movimientos' && (
                         <div className="movimientos-container">

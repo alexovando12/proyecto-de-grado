@@ -13,9 +13,27 @@ async function descontarStockProducto(producto_id, cantidad) {
 
   // 🧩 Si es tipo "preparado", descontar directamente del stock de productos_preparados
   if (producto.tipo_inventario === 'preparado') {
+    // Verificar si hay un producto_preparado asociado
+    if (!producto.producto_preparado_id) {
+      throw new Error(`El producto ${producto.nombre} no tiene un producto preparado asociado`);
+    }
+    
+    const prepResult = await pool.query('SELECT * FROM productos_preparados WHERE id = $1', [producto.producto_preparado_id]);
+    const productoPreparado = prepResult.rows[0];
+    
+    if (!productoPreparado) {
+      throw new Error(`No se encontró el producto preparado con ID ${producto.producto_preparado_id}`);
+    }
+    
+    if (productoPreparado.stock_actual < cantidad) {
+      throw new Error(`Stock insuficiente de ${productoPreparado.nombre}. Disponible: ${productoPreparado.stock_actual}, Requerido: ${cantidad}`);
+    }
+    
+    // Descontar stock del producto preparado
     await pool.query(`
       UPDATE productos_preparados
-      SET stock_actual = stock_actual - $1
+      SET stock_actual = stock_actual - $1,
+          fecha_actualizacion = CURRENT_TIMESTAMP
       WHERE id = $2
     `, [cantidad, producto.producto_preparado_id]);
 
@@ -27,18 +45,35 @@ async function descontarStockProducto(producto_id, cantidad) {
       WHERE producto_id = $1
     `, [producto_id]);
 
-for (const r of receta.rows) {
-  // 🔧 Convertimos a número para evitar el error "unknown * unknown"
-  const cantidadIngrediente = parseFloat(r.cantidad);
-  const cantidadPedida = parseFloat(cantidad);
+    if (receta.rows.length === 0) {
+      throw new Error(`El producto ${producto.nombre} no tiene una receta definida`);
+    }
 
-  await pool.query(`
-    UPDATE ingredientes
-    SET stock_actual = stock_actual - (($1::numeric) * ($2::numeric))
-    WHERE id = $3
-  `, [cantidadIngrediente, cantidadPedida, r.ingrediente_id]);
-}
+    for (const r of receta.rows) {
+      // 🔧 Convertimos a número para evitar el error "unknown * unknown"
+      const cantidadIngrediente = parseFloat(r.cantidad);
+      const cantidadPedida = parseFloat(cantidad);
+      const requerido = cantidadIngrediente * cantidadPedida;
 
+      // Verificar stock de ingrediente
+      const ingResult = await pool.query('SELECT * FROM ingredientes WHERE id = $1', [r.ingrediente_id]);
+      const ingrediente = ingResult.rows[0];
+      
+      if (!ingrediente) {
+        throw new Error(`No se encontró el ingrediente con ID ${r.ingrediente_id}`);
+      }
+      
+      if (ingrediente.stock_actual < requerido) {
+        throw new Error(`Stock insuficiente de ${ingrediente.nombre}. Disponible: ${ingrediente.stock_actual}, Requerido: ${requerido}`);
+      }
+
+      // Descontar stock del ingrediente
+      await pool.query(`
+        UPDATE ingredientes
+        SET stock_actual = stock_actual - $1
+        WHERE id = $2
+      `, [requerido, r.ingrediente_id]);
+    }
   }
 }
 

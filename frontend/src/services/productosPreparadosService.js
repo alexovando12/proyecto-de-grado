@@ -21,10 +21,15 @@ export const productosPreparadosService = {
     return response.data;
   },
 
-  obtenerReceta: async (productoId) => {
+obtenerReceta: async (productoId) => {
+  try {
     const response = await api.get(`/inventario/productos-preparados/${productoId}/receta`);
     return response.data;
-  },
+  } catch (error) {
+    console.error('Error al obtener receta:', error);
+    throw error;
+  }
+},
 
   agregarIngredienteAReceta: async (productoId, ingredienteId, cantidad) => {
     const response = await api.post(`/inventario/productos-preparados/${productoId}/receta`, {

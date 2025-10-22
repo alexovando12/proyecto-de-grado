@@ -27,7 +27,15 @@ exports.obtenerProducto = async (req, res) => {
 exports.crearProducto = async (req, res) => {
   const client = await pool.connect();
   try {
-    const { nombre, descripcion, precio, categoria, tipo_inventario, receta } = req.body;
+    const {
+      nombre,
+      descripcion,
+      precio,
+      categoria,
+      tipo_inventario,
+      receta,
+      producto_preparado_id  // ← nuevo parámetro opcional
+    } = req.body;
 
     if (!nombre || !precio || !categoria) {
       return res.status(400).json({ error: 'Nombre, precio y categoría son requeridos' });
@@ -35,17 +43,42 @@ exports.crearProducto = async (req, res) => {
 
     await client.query('BEGIN');
 
-    // 1️⃣ Crear producto principal
+    let productoPreparadoId = null;
+
+    if (tipo_inventario === 'preparado') {
+      if (producto_preparado_id) {
+        // Validar que exista
+        const valid = await client.query('SELECT id FROM productos_preparados WHERE id = $1', [producto_preparado_id]);
+        if (valid.rowCount === 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'El producto preparado especificado no existe' });
+        }
+        productoPreparadoId = producto_preparado_id;
+      } else {
+        // Buscar por nombre como respaldo
+        const prepResult = await client.query(
+          `SELECT id FROM productos_preparados WHERE LOWER(nombre) = LOWER($1) LIMIT 1`,
+          [nombre]
+        );
+        if (prepResult.rowCount > 0) {
+          productoPreparadoId = prepResult.rows[0].id;
+        } else {
+          // Podrías exigir que lo seleccione si quieres
+          // return res.status(400).json({ error: 'Debes seleccionar un producto preparado existente' });
+        }
+      }
+    }
+
     const productoResult = await client.query(
-      `INSERT INTO productos (nombre, descripcion, precio, categoria, tipo_inventario)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO productos (nombre, descripcion, precio, categoria, tipo_inventario, producto_preparado_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id`,
-      [nombre, descripcion, precio, categoria, tipo_inventario || 'general']
+      [nombre, descripcion, precio, categoria, tipo_inventario || 'general', productoPreparadoId]
     );
 
     const productoId = productoResult.rows[0].id;
 
-    // 2️⃣ Si viene una receta, la guardamos
+    // Insertar ingredientes si hay receta
     if (Array.isArray(receta) && receta.length > 0) {
       for (const item of receta) {
         await client.query(
@@ -57,8 +90,8 @@ exports.crearProducto = async (req, res) => {
     }
 
     await client.query('COMMIT');
-
     res.status(201).json({ message: 'Producto creado correctamente', productoId });
+
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('❌ Error en crearProducto:', error);

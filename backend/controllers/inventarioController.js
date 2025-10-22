@@ -9,12 +9,28 @@ const MovimientoInventario = require('../models/MovimientoInventario');
 // =========================
 exports.crearIngrediente = async (req, res) => {
   try {
-    const ingrediente = await Ingrediente.crear(req.body);
+    const {
+      nombre,
+      unidad = 'g',
+      stock_actual = 0,
+      stock_minimo = 1
+    } = req.body;
+
+    const nuevo = {
+      nombre,
+      unidad,
+      stock_actual,
+      stock_minimo
+    };
+
+    const ingrediente = await Ingrediente.crear(nuevo);
     res.status(201).json(ingrediente);
   } catch (error) {
+    console.error('❌ Error al crear ingrediente:', error);
     res.status(500).json({ error: error.message });
   }
 };
+
 
 exports.actualizarIngrediente = async (req, res) => {
   try {
@@ -86,14 +102,16 @@ exports.registrarMovimiento = async (req, res) => {
 exports.obtenerMovimientos = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT mi.*, 
-             CASE 
-                 WHEN mi.tipo_inventario = 'ingrediente' THEN i.nombre 
-                 WHEN mi.tipo_inventario = 'producto_preparado' THEN pp.nombre 
-             END as item_nombre
+      SELECT 
+        mi.*,
+        CASE 
+          WHEN mi.tipo_inventario = 'ingrediente' THEN i.nombre 
+          WHEN mi.tipo_inventario = 'producto_preparado' THEN 
+            (SELECT pp.nombre FROM productos_preparados pp WHERE pp.id = p.producto_preparado_id)
+        END as item_nombre
       FROM movimientos_inventario mi
-      LEFT JOIN ingredientes i ON mi.tipo_inventario = 'ingrediente' AND mi.item_id = i.id
-      LEFT JOIN productos_preparados pp ON mi.tipo_inventario = 'producto_preparado' AND mi.item_id = pp.id
+      LEFT JOIN ingredientes i ON mi.ingrediente_id = i.id
+      LEFT JOIN productos p ON mi.producto_id = p.id
       ORDER BY mi.fecha_creacion DESC
     `);
     res.json(result.rows);
@@ -115,23 +133,100 @@ exports.obtenerProductosPreparados = async (req, res) => {
   }
 };
 
-exports.crearProductoPreparado = async (req, res) => {
-  try {
-    const { nombre, descripcion, unidad, stock_actual, stock_minimo } = req.body;
+// ... otros requires
 
-    const result = await pool.query(
+exports.crearProductoPreparado = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const {
+      nombre,
+      descripcion,
+      unidad,
+      stock_actual,
+      stock_minimo,
+      ingredientes
+    } = req.body;
+
+    // 🧩 Validaciones básicas
+    if (!Array.isArray(ingredientes) || ingredientes.length === 0) {
+      throw new Error('La propiedad "ingredientes" debe ser un arreglo con al menos un ingrediente.');
+    }
+
+    // 1️⃣ Crear producto preparado
+    const result = await client.query(
       `INSERT INTO productos_preparados (nombre, descripcion, unidad, stock_actual, stock_minimo)
        VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [nombre, descripcion, unidad, stock_actual, stock_minimo]
+       RETURNING id, stock_actual`,
+      [nombre, descripcion, unidad, stock_actual || 0, stock_minimo]
     );
 
-    res.json(result.rows[0]);
+    const productoPreparadoId = result.rows[0].id;
+    const stockProducto = parseFloat(result.rows[0].stock_actual || 0);
+
+    // 2️⃣ Insertar los ingredientes en recetas
+    for (const ing of ingredientes) {
+      const ingredienteId = parseInt(ing.ingrediente_id);
+      const cantidadPorUnidad = parseFloat(ing.cantidad);
+
+      if (isNaN(ingredienteId) || isNaN(cantidadPorUnidad)) continue;
+
+      await client.query(
+        `INSERT INTO recetas (producto_preparado_id, ingrediente_id, cantidad)
+         VALUES ($1, $2, $3)`,
+        [productoPreparadoId, ingredienteId, cantidadPorUnidad]
+      );
+
+      // 3️⃣ Calcular descuento total = cantidadPorUnidad × stock_actual del producto
+      const cantidadTotalDescontar = cantidadPorUnidad * stockProducto;
+
+// 3️⃣ Descontar directamente la cantidad total indicada en la receta (ya representa todo el lote)
+if (cantidadPorUnidad > 0) {
+  // Verificar stock suficiente
+  const stockRes = await client.query(
+    'SELECT stock_actual, nombre FROM ingredientes WHERE id = $1',
+    [ingredienteId]
+  );
+
+  if (stockRes.rows.length > 0) {
+    const disponible = parseFloat(stockRes.rows[0].stock_actual);
+    const nombreIngrediente = stockRes.rows[0].nombre;
+
+    if (disponible < cantidadPorUnidad) {
+      console.warn(`⚠️ Stock insuficiente de ${nombreIngrediente}. Disponible: ${disponible}, requerido: ${cantidadPorUnidad}`);
+    }
+
+    // 4️⃣ Actualizar stock del ingrediente
+    await client.query(
+      `UPDATE ingredientes
+       SET stock_actual = stock_actual - $1
+       WHERE id = $2`,
+      [cantidadPorUnidad, ingredienteId]
+    );
+  }
+}
+
+    }
+
+    await client.query('COMMIT');
+    res.status(201).json({
+      success: true,
+      message: 'Producto preparado creado correctamente.',
+      producto_preparado_id: productoPreparadoId
+    });
+
   } catch (error) {
-    console.error('Error al crear producto preparado:', error);
-    res.status(500).json({ error: 'Error al crear producto preparado' });
+    await client.query('ROLLBACK');
+    console.error('❌ Error al crear producto preparado:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 };
+
+
 
 exports.actualizarProductoPreparado = async (req, res) => {
   try {
@@ -160,10 +255,31 @@ exports.eliminarProductoPreparado = async (req, res) => {
 exports.obtenerReceta = async (req, res) => {
   try {
     const { id } = req.params;
-    const receta = await Receta.obtenerPorProducto(id);
+    console.log(`🔍 Buscando receta para producto_preparado ID: ${id}`);
+
+    // Validar que el producto preparado existe
+    const productoResult = await pool.query('SELECT * FROM productos_preparados WHERE id = $1', [id]);
+    if (productoResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Producto preparado no encontrado' });
+    }
+
+    const recetaResult = await pool.query(`
+      SELECT 
+        r.*,
+        i.nombre as ingrediente_nombre,
+        i.unidad as ingrediente_unidad
+      FROM recetas r
+      JOIN ingredientes i ON r.ingrediente_id = i.id
+      WHERE r.producto_preparado_id = $1
+    `, [id]);
+
+    const receta = recetaResult.rows;
+
+    console.log(`📤 Enviando receta:`, receta);
     res.json(receta);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('❌ Error al obtener receta:', error);
+    res.status(500).json({ error: 'Error interno al obtener la receta' });
   }
 };
 
@@ -205,72 +321,80 @@ exports.prepararProducto = async (req, res) => {
       return res.status(400).json({ error: 'productoId y cantidad válidos son requeridos' });
     }
 
-    console.log('📨 Body recibido en /preparar:', req.body);
+    console.log('📦 Enviando body a backend:', { productoId, cantidad });
 
     await client.query('BEGIN');
 
-    // 1️⃣ Obtener receta
+    // 1️⃣ Obtener el producto preparado
+    const prepResult = await client.query('SELECT * FROM productos_preparados WHERE id = $1', [productoId]);
+    const productoPreparado = prepResult.rows[0];
+
+    if (!productoPreparado) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Producto preparado no encontrado' });
+    }
+
+    // 2️⃣ Obtener la receta del producto preparado (buscando productos que lo referencien)
     const recetaResult = await client.query(`
-      SELECT r.ingrediente_id, r.cantidad, i.stock_actual, i.nombre
+      SELECT r.ingrediente_id, r.cantidad, i.stock_actual, i.nombre, i.unidad
       FROM recetas r
       JOIN ingredientes i ON i.id = r.ingrediente_id
-      WHERE r.producto_preparado_id = $1
+      JOIN productos p ON p.id = r.producto_id
+      WHERE p.producto_preparado_id = $1
     `, [productoId]);
 
     if (recetaResult.rows.length === 0) {
       await client.query('ROLLBACK');
-      return res.status(400).json({ error: '❌ Este producto no tiene receta asociada.' });
+      return res.status(400).json({ error: 'Este producto no tiene receta asociada' });
     }
 
-    // 2️⃣ Verificar stock suficiente (sin multiplicar)
+    // 3️⃣ Verificar stock suficiente de ingredientes
     for (const item of recetaResult.rows) {
-      const descontar = parseFloat(item.cantidad);
-
-      if (isNaN(descontar)) throw new Error(`Cantidad inválida para ${item.nombre}`);
+      const descontar = parseFloat(item.cantidad) * parseFloat(cantidad);
 
       if (parseFloat(item.stock_actual) < descontar) {
         await client.query('ROLLBACK');
         return res.status(400).json({
-          error: `Stock insuficiente de ${item.nombre}. Disponible: ${item.stock_actual}, Requiere: ${descontar}`
+          error: `Stock insuficiente de ${item.nombre}. Disponible: ${item.stock_actual} ${item.unidad}, Requiere: ${descontar} ${item.unidad}`
         });
       }
     }
 
-    // 3️⃣ Descontar ingredientes (sin multiplicar)
+    // 4️⃣ Descontar ingredientes
     for (const item of recetaResult.rows) {
-      const descontar = parseFloat(item.cantidad);
+      const descontar = parseFloat(item.cantidad) * parseFloat(cantidad);
 
-      const updateIng = await client.query(`
+      await client.query(`
         UPDATE ingredientes
         SET stock_actual = stock_actual - $1
         WHERE id = $2
-        RETURNING nombre, stock_actual
       `, [descontar, item.ingrediente_id]);
 
-      console.log(`🧂 Ingrediente descontado:`, updateIng.rows[0]);
-
+      // Registrar movimiento de ingrediente
       await client.query(`
-        INSERT INTO movimientos_inventario (tipo_inventario, item_id, tipo, cantidad, motivo, usuario_id)
+        INSERT INTO movimientos_inventario (tipo_inventario, ingrediente_id, tipo, cantidad, motivo, usuario_id)
         VALUES ('ingrediente', $1, 'salida', $2, 'Preparación automática de producto', 1)
       `, [item.ingrediente_id, descontar]);
     }
 
-    // 4️⃣ Aumentar stock del producto preparado (sí aumenta según cantidad indicada)
+    // 5️⃣ Aumentar stock del producto preparado
     const updateProd = await client.query(`
       UPDATE productos_preparados
-      SET stock_actual = stock_actual + $1
+      SET stock_actual = stock_actual + $1,
+          fecha_actualizacion = CURRENT_TIMESTAMP
       WHERE id = $2
       RETURNING nombre, stock_actual
     `, [cantidad, productoId]);
 
-    console.log('🍳 Producto preparado actualizado:', updateProd.rows[0]);
-
+    // 6️⃣ Registrar movimiento de producto preparado
     await client.query(`
-      INSERT INTO movimientos_inventario (tipo_inventario, item_id, tipo, cantidad, motivo, usuario_id)
+      INSERT INTO movimientos_inventario (tipo_inventario, producto_id, tipo, cantidad, motivo, usuario_id)
       VALUES ('producto_preparado', $1, 'entrada', $2, 'Preparación automática de producto', 1)
     `, [productoId, cantidad]);
 
     await client.query('COMMIT');
+
+    console.log('✅ Producto preparado actualizado:', updateProd.rows[0]);
 
     return res.json({
       success: true,
