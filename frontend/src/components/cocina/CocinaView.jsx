@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { pedidoService } from '../../services/pedidoService.js';
-import { io } from 'socket.io-client';
 
 import { io } from "socket.io-client";
 
