@@ -19,7 +19,7 @@ const SimpleLogin = () => {
       // 🔥 URL DINÁMICA (YA NO localhost)
       const API_URL = import.meta.env.VITE_API_URL;
 
-      const response = await fetch(`${API_URL}/api/auth/login`, {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
