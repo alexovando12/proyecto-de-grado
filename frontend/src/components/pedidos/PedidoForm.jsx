@@ -10,7 +10,8 @@ import { pedidoService } from '../../services/pedidoService.js';
 
 const ACTIVE_STATES = ['pendiente', 'confirmado', 'preparando', 'listo'];
 
-const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
+const PedidoForm = ({ onPedidoCreado, mesaSeleccionada, pedidoExistente }) => {
+
   const { user } = useAuth();
 
   const [mesasDisponibles, setMesasDisponibles] = useState([]);
@@ -25,6 +26,29 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
   useEffect(() => {
     setSelectedMesa(mesaSeleccionada ? String(mesaSeleccionada) : '');
   }, [mesaSeleccionada]);
+
+  // Cuando recibimos un pedido para editarlo, llenamos los campos automáticamente
+useEffect(() => {
+  if (pedidoExistente) {
+
+    // Mesa del pedido
+    setSelectedMesa(String(pedidoExistente.mesa_id));
+
+    // Detalles del pedido
+    const itemsCargados = (pedidoExistente.detalles ?? []).map(d => ({
+      producto_id: d.producto_id,
+      nombre: d.producto_nombre,
+      precio: Number(d.precio),
+      cantidad: Number(d.cantidad),
+      notas: d.notas ?? ""
+    }));
+    setItems(itemsCargados);
+
+    // Notas generales del pedido (si usas notas)
+    setNotas(pedidoExistente.notas ?? '');
+  }
+}, [pedidoExistente]);
+
 
   useEffect(() => {
     cargarMesas();
@@ -193,9 +217,10 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
     }
     setSelectedMesa(val);
   };
+const recheckMesaDisponible = async (mesaId) => {
+  try {
+      if (pedidoExistente) return true; // ← SOLUCIÓN
 
-  const recheckMesaDisponible = async (mesaId) => {
-    try {
       const pedidos = await pedidoService.obtenerPorMesa(Number(mesaId));
       if (tienePedidoActivo(pedidos)) return false;
 
@@ -206,28 +231,45 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
         } catch {}
       }
       return true;
-    } catch {
-      return false;
-    }
-  };
+  } catch {
+    return false;
+  }
+};
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedMesa || items.length === 0) {
-      alert('Selecciona una mesa disponible y añade productos');
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!selectedMesa || items.length === 0) {
+    alert('Selecciona una mesa disponible y añade productos');
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const ok = await recheckMesaDisponible(selectedMesa);
+    if (!ok) {
+      await cargarMesas();
+      setLoading(false);
+      alert('La mesa ya está ocupada o reservada.');
       return;
     }
 
-    setLoading(true);
-    try {
-      const ok = await recheckMesaDisponible(selectedMesa);
-      if (!ok) {
-        await cargarMesas();
-        setLoading(false);
-        alert('La mesa ya está ocupada o reservada.');
-        return;
-      }
+    let response;
 
+    // 🔥 EDICIÓN
+    if (pedidoExistente) {
+      const detallesNormalizados = items.map(i => ({
+  producto_id: i.producto_id,
+  cantidad: Number(i.cantidad),
+  notas: i.notas,
+  precio: Number(i.precio)
+}));
+
+response = await pedidoService.editarDetalles(pedidoExistente.id, detallesNormalizados);
+
+
+    // 🔥 CREACIÓN
+    } else {
       const pedido = {
         mesa_id: Number(selectedMesa),
         usuario_id: user?.id,
@@ -240,35 +282,43 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
         notas: notas?.trim() || undefined,
       };
 
-      const response = await pedidoService.crear(pedido);
-
-      if (HAS_MESAS_ESTADO_ENDPOINT) {
-        try {
-          await mesaService.actualizarEstado(Number(selectedMesa), 'ocupada');
-        } catch (errMesa) {
-          console.warn('[PedidoForm] No se pudo marcar mesa ocupada:', errMesa?.message || errMesa);
-        }
-      }
-
-      setItems([]);
-      setNotas('');
-      setSelectedMesa('');
-      if (typeof onPedidoCreado === 'function') onPedidoCreado(response);
-      window.dispatchEvent(new CustomEvent('mesa-status-changed'));
-
-      alert('Pedido creado exitosamente');
-    } catch (error) {
-      const msg = error?.response?.data?.message || error?.response?.data || error.message;
-      console.error('Error al crear pedido:', msg);
-      alert(`Error: ${msg}`);
-    } finally {
-      setLoading(false);
+      response = await pedidoService.crear(pedido);
     }
-  };
+
+    if (HAS_MESAS_ESTADO_ENDPOINT) {
+      try {
+        await mesaService.actualizarEstado(Number(selectedMesa), 'ocupada');
+      } catch (errMesa) {
+        console.warn('[PedidoForm] No se pudo marcar mesa ocupada:', errMesa?.message || errMesa);
+      }
+    }
+
+    setItems([]);
+    setNotas('');
+    setSelectedMesa('');
+
+    if (typeof onPedidoCreado === 'function') onPedidoCreado(response);
+
+    window.dispatchEvent(new CustomEvent('mesa-status-changed'));
+
+    alert(pedidoExistente ? "Pedido actualizado correctamente" : "Pedido creado correctamente");
+
+  } catch (error) {
+    const msg = error?.response?.data?.message || error?.response?.data || error.message;
+    console.error('Error:', msg);
+    alert(`Error: ${msg}`);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="pedido-form">
-      <h3 className="pedido-form-title">Nuevo Pedido</h3>
+    <h3 className="pedido-form-title">
+      {pedidoExistente ? `Editar Pedido #${pedidoExistente.id}` : "Nuevo Pedido"}
+    </h3>
+
 
       <div className="pedido-form-section">
         <h4 className="pedido-form-subtitle">Seleccionar Mesa</h4>
@@ -396,8 +446,11 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada }) => {
           onClick={handleSubmit}
           disabled={loading || !selectedMesa || items.length === 0}
         >
-          {loading ? 'Creando Pedido...' : 'Crear Pedido'}
+          {pedidoExistente
+            ? (loading ? "Actualizando..." : "Actualizar Pedido")
+            : (loading ? "Creando Pedido..." : "Crear Pedido")}
         </button>
+
       </div>
     </div>
   );

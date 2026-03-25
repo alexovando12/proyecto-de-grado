@@ -1,79 +1,119 @@
 import api from './api.js';
 
 export const inventarioService = {
-  // Ingredientes
+
+  // =========================
+  // INGREDIENTES
+  // =========================
   obtenerIngredientes: async () => {
-    const response = await api.get('/inventario/ingredientes');
-    return response.data;
+    try {
+      const response = await api.get('/inventario/ingredientes');
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al obtener ingredientes');
+    }
   },
 
   crearIngrediente: async (ingrediente) => {
-    const response = await api.post('/inventario/ingredientes', ingrediente);
-    return response.data;
+    try {
+      const response = await api.post('/inventario/ingredientes', ingrediente);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al crear ingrediente');
+    }
   },
 
   actualizarIngrediente: async (id, ingrediente) => {
-    const response = await api.put(`/inventario/ingredientes/${id}`, ingrediente);
-    return response.data;
+    try {
+      const response = await api.put(`/inventario/ingredientes/${id}`, ingrediente);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al actualizar ingrediente');
+    }
   },
 
   eliminarIngrediente: async (id) => {
-    const response = await api.delete(`/inventario/ingredientes/${id}`);
-    return response.data;
+    try {
+      const response = await api.delete(`/inventario/ingredientes/${id}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al eliminar ingrediente');
+    }
   },
 
-  // Productos preparados
+  // =========================
+  // PRODUCTOS PREPARADOS
+  // =========================
   obtenerProductosPreparados: async () => {
-    const response = await api.get('/inventario/productos-preparados');
-    return response.data;
+    try {
+      const response = await api.get('/inventario/productos-preparados');
+      return response.data;
+    } catch (error) {
+      throw new Error('Error al obtener productos preparados');
+    }
   },
 
   crearProductoPreparado: async (producto) => {
-    const response = await api.post('/inventario/productos-preparados', producto);
-    return response.data;
+    try {
+      const response = await api.post('/inventario/productos-preparados', producto);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al crear producto');
+    }
   },
 
-prepararProducto: async ({ productoId, cantidad }) => {
-  try {
-    console.log('📦 Enviando body a backend:', { productoId, cantidad });
+  prepararProducto: async ({ productoId, cantidad }) => {
+    try {
+      const response = await api.post(
+        '/inventario/productos-preparados/preparar',
+        { productoId, cantidad }
+      );
 
-    const response = await api.post(
-      '/inventario/productos-preparados/preparar',
-      { productoId, cantidad }
-    );
+      // 🔥 refresca inventario automáticamente
+      window.dispatchEvent(new Event('inventarioActualizado'));
 
-    console.log('✅ Respuesta del backend:', response.data);
-
-    // Dispara evento personalizado para actualizar vista automáticamente
-    const event = new CustomEvent('inventarioActualizado');
-    window.dispatchEvent(event);
-
-    return response.data;
-  } catch (error) {
-    console.error('❌ Error en prepararProducto:', error.response?.data || error);
-    throw error;
-  }
-},
-
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al preparar producto');
+    }
+  },
 
   venderProductoPreparado: async (data) => {
-    const response = await api.post('/inventario/productos-preparados/vender', data);
-    return response.data;
+    try {
+      const response = await api.post('/inventario/productos-preparados/vender', data);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al vender producto');
+    }
   },
 
   venderPlatoDirecto: async (data) => {
-    const response = await api.post('/inventario/platos-directos/vender', data);
-    return response.data;
+    try {
+      const response = await api.post('/inventario/platos-directos/vender', data);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al vender plato');
+    }
   },
 
-  // Movimientos y alertas
+  // =========================
+  // ALERTAS Y MOVIMIENTOS
+  // =========================
   obtenerMovimientos: async () => {
-    const response = await api.get('/inventario/movimientos');
-    return response.data;
+    try {
+      const response = await api.get('/inventario/movimientos');
+      return response.data;
+    } catch {
+      return [];
+    }
   },
 
   obtenerAlertasStock: async () => {
-    const response = await api.get('/inventario/alertas-stock');
-    return response.data;
+    try {
+      const response = await api.get('/inventario/alertas-stock');
+      return response.data;
+    } catch {
+      return { ingredientes: [], productosPreparados: [] };
+    }
   },
 };

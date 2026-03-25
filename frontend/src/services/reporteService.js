@@ -22,5 +22,10 @@ export const reporteService = {
     const params = new URLSearchParams(filtros).toString();
     const response = await api.get(`/reportes/movimientos${params ? `?${params}` : ''}`);
     return response.data;
-  }
+  },
+  generarReporteDetallePedidos: async (filtros = {}) => {
+  const params = new URLSearchParams(filtros).toString();
+  const response = await api.get(`/reportes/detalle-pedidos${params ? `?${params}` : ''}`);
+  return response.data;
+ }
 };

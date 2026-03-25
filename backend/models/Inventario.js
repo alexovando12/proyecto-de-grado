@@ -60,32 +60,46 @@ class Inventario {
   }
 
   static async ajustarStock(id, cantidad, tipo) {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      
-      // Actualizar stock
-      const updateQuery = tipo === 'entrada' 
-        ? 'UPDATE inventario SET stock_actual = stock_actual + $1 WHERE id = $2'
-        : 'UPDATE inventario SET stock_actual = stock_actual - $1 WHERE id = $2';
-      
-      await client.query(updateQuery, [cantidad, id]);
-      
-      // Registrar movimiento
-      await client.query(
-        'INSERT INTO movimientos_inventario (ingrediente_id, tipo, cantidad, motivo, usuario_id) VALUES ($1, $2, $3, $4, $5)',
-        [id, tipo, cantidad, `Ajuste de ${tipo}`, 1] // usuario_id 1 para admin
-      );
-      
-      await client.query('COMMIT');
-      return { success: true };
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const cantidadNum = Number(cantidad);
+    if (!Number.isFinite(cantidadNum) || cantidadNum <= 0) {
+      throw new Error('Cantidad inválida');
     }
+
+    const stockRow = await client.query(
+      'SELECT stock_actual FROM inventario WHERE id = $1 FOR UPDATE',
+      [id]
+    );
+
+    if (!stockRow.rows.length) throw new Error('Item no encontrado');
+
+    const stock = Number(stockRow.rows[0].stock_actual);
+    let nuevoStock = tipo === 'entrada'
+      ? stock + cantidadNum
+      : stock - cantidadNum;
+
+    if (nuevoStock < 0) {
+      throw new Error('Stock insuficiente');
+    }
+
+    await client.query(
+      'UPDATE inventario SET stock_actual=$1 WHERE id=$2',
+      [nuevoStock, id]
+    );
+
+    await client.query('COMMIT');
+    return { success: true };
+
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
   }
+}
 }
 
 module.exports = Inventario;

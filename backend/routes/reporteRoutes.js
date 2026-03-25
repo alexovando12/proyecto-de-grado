@@ -7,5 +7,6 @@ router.get('/ventas', auth, reporteController.generarReporteVentas);
 router.get('/productos-populares', auth, reporteController.generarReporteProductosPopulares);
 router.get('/inventario', auth, reporteController.generarReporteInventario);
 router.get('/movimientos', auth, reporteController.generarReporteMovimientos);
+router.get('/detalle-pedidos', auth, reporteController.generarReporteDetallePedidos);
 
 module.exports = router;

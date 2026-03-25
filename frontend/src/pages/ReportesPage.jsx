@@ -28,6 +28,9 @@ const ReportesPage = () => {
         case 'inventario':
           data = await reporteService.generarReporteInventario();
           break;
+        case 'detalle':
+          data = await reporteService.generarReporteDetallePedidos(filtros);
+          break;
         case 'movimientos':
           data = await reporteService.generarReporteMovimientos(filtros);
           break;
@@ -36,14 +39,31 @@ const ReportesPage = () => {
       }
       setReporteData(data);
     } catch (error) {
-      console.error('Error al cargar reporte:', error);
+      alert(error.response?.data?.error || 'Error al cargar reporte');
     }
   };
 
-  const handleExportar = () => {
-    // Implementar exportación a CSV o PDF
-    console.log('Exportando reporte...');
-  };
+const handleExportar = () => {
+  if (!reporteData.length) return;
+
+  const headers = Object.keys(reporteData[0]);
+  const rows = reporteData.map(obj => headers.map(h => obj[h]));
+
+  let csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `reporte_${activeTab}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
   const formatearMoneda = (valor) => {
     return new Intl.NumberFormat('es-MX', {
@@ -56,7 +76,7 @@ const ReportesPage = () => {
     if (activeTab === 'ventas' && reporteData.length > 0) {
       const totalVentas = reporteData.reduce((sum, item) => sum + parseFloat(item.total_ventas), 0);
       const totalPedidos = reporteData.reduce((sum, item) => sum + parseInt(item.total_pedidos), 0);
-      const ticketPromedio = totalVentas / totalPedidos;
+      const ticketPromedio = totalPedidos ? totalVentas / totalPedidos : 0;
       
       return [
         { label: 'Total Ventas', value: formatearMoneda(totalVentas), trend: 'positive' },
@@ -81,7 +101,7 @@ const ReportesPage = () => {
         <tbody>
           {reporteData.map((item, index) => (
             <tr key={index}>
-              <td>{new Date(item.fecha).toLocaleDateString()}</td>
+              <td>{item.fecha ? new Date(item.fecha).toLocaleDateString() : '-'}</td>
               <td>{item.total_pedidos}</td>
               <td>{formatearMoneda(item.total_ventas)}</td>
               <td>{formatearMoneda(item.ticket_promedio)}</td>
@@ -153,6 +173,35 @@ const ReportesPage = () => {
     </div>
   );
 
+  const renderTablaDetalle = () => (
+  <div className="reporte-table-container">
+    <table className="reporte-table">
+      <thead>
+        <tr>
+          <th>Pedido</th>
+          <th>Mesa</th>
+          <th>Fecha</th>
+          <th>Producto</th>
+          <th>Cantidad</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {reporteData.map((item, index) => (
+          <tr key={index}>
+            <td>{item.pedido_id}</td>
+            <td>{item.mesa_id}</td>
+            <td>{new Date(item.fecha).toLocaleDateString()}</td>
+            <td>{item.producto}</td>
+            <td>{item.cantidad}</td>
+            <td>{formatearMoneda(item.total || 0)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
   const renderTablaMovimientos = () => (
     <div className="reporte-table-container">
       <table className="reporte-table">
@@ -215,6 +264,12 @@ const ReportesPage = () => {
               onClick={() => setActiveTab('inventario')}
             >
               Inventario
+            </button>
+            <button 
+              className={`reportes-tab ${activeTab === 'detalle' ? 'active' : ''}`}
+              onClick={() => setActiveTab('detalle')}
+            >
+              Detalle Pedidos
             </button>
             <button 
               className={`reportes-tab ${activeTab === 'movimientos' ? 'active' : ''}`}
@@ -282,7 +337,7 @@ const ReportesPage = () => {
           {activeTab === 'productos' && renderTablaProductos()}
           {activeTab === 'inventario' && renderTablaInventario()}
           {activeTab === 'movimientos' && renderTablaMovimientos()}
-
+          {activeTab === 'detalle' && renderTablaDetalle()}
           {/* Acciones */}
           <div className="reporte-acciones">
             <button className="reporte-btn-exportar" onClick={handleExportar}>

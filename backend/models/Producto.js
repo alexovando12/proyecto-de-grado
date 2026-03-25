@@ -96,11 +96,23 @@ class Producto {
     }
   }
 
-  static async eliminar(id) {
-    const result = await pool.query('DELETE FROM productos WHERE id = $1 RETURNING *', [id]);
-    return result.rows[0];
+static async eliminar(id) {
+  const uso = await pool.query(
+    'SELECT 1 FROM pedido_detalles WHERE producto_id=$1 LIMIT 1',
+    [id]
+  );
+
+  if (uso.rows.length > 0) {
+    throw new Error('No puedes eliminar un producto usado en pedidos');
   }
 
+  const result = await pool.query(
+    'DELETE FROM productos WHERE id=$1 RETURNING *',
+    [id]
+  );
+
+  return result.rows[0];
+}
   static async obtenerPorCategoria(categoria) {
     const result = await pool.query('SELECT * FROM productos WHERE categoria = $1 ORDER BY nombre', [categoria]);
     return result.rows;

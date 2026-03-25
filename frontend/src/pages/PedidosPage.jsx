@@ -106,14 +106,26 @@ const PedidosPage = () => {
     setShowEditForm(true);
   };
 
-  const liberarMesa = async (id) => {
-    try {
-      await pedidoService.liberarMesa(id);
-      setPedidos(prev => prev.filter(p => p.id !== id));
-    } catch (error) {
-      console.error('Error al liberar mesa:', error);
-    }
-  };
+const liberarMesa = async (id) => {
+  try {
+
+    const confirmacion = window.confirm(
+      '¿Cerrar pedido y liberar mesa?'
+    );
+
+    if (!confirmacion) return;
+
+    await pedidoService.actualizarEstado(Number(id), 'cerrado');
+
+    alert('Mesa liberada correctamente');
+
+    await cargarPedidos();
+    window.dispatchEvent(new Event('mesa-status-changed'));
+
+  } catch (error) {
+    alert(error.message);
+  }
+};
 
   const getEstadoClass = (estado) => {
     switch (estado) {
@@ -240,30 +252,38 @@ const PedidosPage = () => {
                   <div className="pedido-card-total">
                     <strong>Total: {toMoney(pedido.total)}</strong>
                   </div>
-                  <div className="pedido-card-actions">
-                    {pedido.estado === 'listo' && (
-                      <>
-                        <button
-                          className="btn btn-success btn-sm"
-                          onClick={() => actualizarEstadoPedido(pedido.id, 'entregado')}
-                        >
-                          Entregar
-                        </button>
-                        <button
-                          className="btn btn-warning btn-sm"
-                          onClick={() => editarPedido(pedido)}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => liberarMesa(pedido.id)}
-                        >
-                          Liberar Mesa
-                        </button>
-                      </>
-                    )}
-                  </div>
+                 <div className="pedido-card-actions">
+
+  {/* 🔥 Botón Editar SIEMPRE */}
+  <button
+    className="btn btn-warning btn-sm"
+    onClick={() => editarPedido(pedido)}
+  >
+    Editar
+  </button>
+
+  {/* 🔥 Botón Entregar SOLO cuando está listo */}
+  {pedido.estado === 'listo' && (
+    <button
+      className="btn btn-success btn-sm"
+      onClick={() => actualizarEstadoPedido(pedido.id, 'entregado')}
+    >
+      Entregar
+    </button>
+  )}
+
+  {/* 🔥 Botón Liberar mesa SIEMPRE */}
+{pedido.estado === 'entregado' && (
+  <button
+    className="btn btn-danger btn-sm"
+    onClick={() => liberarMesa(pedido.id)}
+  >
+    Cerrar Pedido
+  </button>
+)}
+
+</div>
+
                 </div>
               </div>
             ))}

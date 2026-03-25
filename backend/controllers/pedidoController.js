@@ -76,6 +76,38 @@ async function descontarStockProducto(producto_id, cantidad) {
     }
   }
 }
+async function devolverStockProducto(producto_id, cantidad) {
+  const { rows } = await pool.query('SELECT * FROM productos WHERE id = $1', [producto_id]);
+  const producto = rows[0];
+
+  if (!producto) return;
+
+  if (producto.tipo_inventario === 'preparado') {
+    await pool.query(`
+      UPDATE productos_preparados
+      SET stock_actual = stock_actual + $1
+      WHERE id = $2
+    `, [cantidad, producto.producto_preparado_id]);
+
+  } else if (producto.tipo_inventario === 'general') {
+    const receta = await pool.query(`
+      SELECT ingrediente_id, cantidad
+      FROM recetas
+      WHERE producto_id = $1
+    `, [producto_id]);
+
+    for (const r of receta.rows) {
+      const devolver = parseFloat(r.cantidad) * cantidad;
+
+      await pool.query(`
+        UPDATE ingredientes
+        SET stock_actual = stock_actual + $1
+        WHERE id = $2
+      `, [devolver, r.ingrediente_id]);
+    }
+  }
+}
+
 
 /* ------------------------------------------
    🔹 Obtener todos los pedidos
@@ -219,13 +251,117 @@ exports.actualizarEstadoPedido = async (req, res) => {
     const { id } = req.params;
     const { estado } = req.body;
 
-    await Pedido.actualizar(id, { estado });
+    let total = null;
+
+    // 🔥 SOLO cuando se entrega el pedido
+    if (estado === 'entregado') {
+      const result = await require('../config/db').query(`
+        SELECT 
+          COALESCE(SUM(cantidad * precio), 0) as total
+        FROM detalles_pedido
+        WHERE pedido_id = $1
+      `, [id]);
+
+      total = result.rows[0].total;
+    }
+
+    // 🔥 actualizar pedido
+    await Pedido.actualizar(id, {
+      estado,
+      ...(total !== null && { total })
+    });
+
     const pedidoCompleto = await Pedido.obtenerPorIdConDetalles(id);
 
     if (req.io) req.io.emit('pedidoActualizado', pedidoCompleto);
+
     res.json(pedidoCompleto);
+
   } catch (error) {
+    console.error("❌ ERROR actualizarEstadoPedido:", error);
     res.status(500).json({ error: error.message });
+  }
+};
+
+/* ------------------------------------------
+   🔹 Actualizar detalles de un pedido (editar cantidades/agregar/eliminar)
+------------------------------------------- */
+exports.actualizarDetallesPedido = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const nuevosDetalles = req.body.detalles; // lista completa desde frontend
+
+    await client.query("BEGIN");
+
+    // Obtener detalles actuales
+    const detallesActuales = await DetallePedido.obtenerPorPedido(id);
+
+    // Mapa para manejar diferencias
+    const actualesMap = new Map(detallesActuales.map(d => [d.producto_id, d]));
+    const nuevosMap = new Map(nuevosDetalles.map(d => [d.producto_id, d]));
+
+    // 1. Eliminar productos que ya no están
+    for (const [producto_id, det] of actualesMap.entries()) {
+      if (!nuevosMap.has(producto_id)) {
+        // devolver stock
+        await devolverStockProducto(producto_id, det.cantidad);
+        await client.query(`DELETE FROM detalles_pedido WHERE id = $1`, [det.id]);
+      }
+    }
+
+    // 2. Actualizar productos existentes
+    for (const det of nuevosDetalles) {
+      const actual = actualesMap.get(det.producto_id);
+
+      if (actual) {
+        const diferencia = det.cantidad - actual.cantidad;
+
+        if (diferencia > 0) {
+          await descontarStockProducto(det.producto_id, diferencia);
+        } else if (diferencia < 0) {
+          await devolverStockProducto(det.producto_id, Math.abs(diferencia));
+        }
+
+        await client.query(
+          `UPDATE detalles_pedido 
+           SET cantidad = $1, notas = $2, precio = $3 
+           WHERE id = $4`,
+          [det.cantidad, det.notas, det.precio, actual.id]
+        );
+      }
+    }
+
+    // 3. Agregar productos nuevos
+    for (const det of nuevosDetalles) {
+      if (!actualesMap.has(det.producto_id)) {
+        await descontarStockProducto(det.producto_id, det.cantidad);
+
+        await client.query(
+          `INSERT INTO detalles_pedido (pedido_id, producto_id, cantidad, notas, precio)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [id, det.producto_id, det.cantidad, det.notas, det.precio]
+        );
+      }
+    }
+
+    // 4. Recalcular total
+    const total = nuevosDetalles.reduce((acc, d) => acc + d.precio * d.cantidad, 0);
+    await client.query(`UPDATE pedidos SET total = $1 WHERE id = $2`, [total, id]);
+
+    await client.query("COMMIT");
+
+    const pedidoActualizado = await Pedido.obtenerPorIdConDetalles(id);
+
+    if (req.io) req.io.emit("pedidoActualizado", pedidoActualizado);
+    res.json(pedidoActualizado);
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("❌ Error actualizando detalles:", error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 };
 

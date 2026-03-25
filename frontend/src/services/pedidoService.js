@@ -1,20 +1,17 @@
 import api from './api.js';
 
-// Estados permitidos
-const ALLOWED_STATES = ['pendiente', 'confirmado', 'preparando', 'listo', 'entregado', 'cancelado'];
-
-const sanitizeEstado = (estado) => {
-  const e = String(estado || '').trim().toLowerCase();
-  if (!ALLOWED_STATES.includes(e)) {
-    throw new Error(`Estado no permitido: "${estado}". Permitidos: ${ALLOWED_STATES.join(', ')}`);
-  }
-  return e;
-};
-
 export const pedidoService = {
+
+  // =========================
+  // OBTENER
+  // =========================
   obtenerTodos: async () => {
-    const { data } = await api.get('/pedidos');
-    return data;
+    try {
+      const { data } = await api.get('/pedidos');
+      return data;
+    } catch {
+      return [];
+    }
   },
 
   obtenerPorId: async (id) => {
@@ -22,44 +19,93 @@ export const pedidoService = {
     return data;
   },
 
+  // =========================
+  // CREAR PEDIDO 🔥
+  // =========================
   crear: async (pedido) => {
-    const { data } = await api.post('/pedidos', pedido, {
-      headers: { 'Content-Type': 'application/json' },
-    });
-    return data;
+    try {
+
+      // 🔥 VALIDACIÓN FRONT
+      if (!pedido.mesa_id) {
+        throw new Error('Debe seleccionar una mesa');
+      }
+
+      if (!Array.isArray(pedido.items) || pedido.items.length === 0) {
+        throw new Error('El pedido debe tener al menos un item');
+      }
+
+      const items = pedido.items.map(i => ({
+        producto_id: i.producto_id || null,
+        producto_preparado_id: i.producto_preparado_id || null,
+        cantidad: Number(i.cantidad)
+      }));
+
+      const { data } = await api.post('/pedidos', {
+        mesa_id: Number(pedido.mesa_id),
+        items
+      });
+
+      return data;
+
+    } catch (error) {
+      throw new Error(error.response?.data?.error || error.message);
+    }
   },
 
+  // =========================
+  // EDITAR PEDIDO 🔥🔥🔥
+  // =========================
   actualizar: async (id, pedido) => {
-    const { data } = await api.put(`/pedidos/${Number(id)}`, pedido, {
-      headers: { 'Content-Type': 'application/json' },
-    });
-    return data;
+    try {
+
+      if (!Array.isArray(pedido.items) || pedido.items.length === 0) {
+        throw new Error('El pedido debe tener items');
+      }
+
+      const items = pedido.items.map(i => ({
+        producto_id: i.producto_id || null,
+        producto_preparado_id: i.producto_preparado_id || null,
+        cantidad: Number(i.cantidad)
+      }));
+
+      const { data } = await api.put(`/pedidos/${Number(id)}`, {
+        mesa_id: Number(pedido.mesa_id),
+        items
+      });
+
+      return data;
+
+    } catch (error) {
+      throw new Error(error.response?.data?.error || error.message);
+    }
   },
 
+  // =========================
+  // ELIMINAR PEDIDO 🔥🔥🔥
+  // =========================
   eliminar: async (id) => {
-    const { data } = await api.delete(`/pedidos/${Number(id)}`);
-    return data;
+    try {
+      const { data } = await api.delete(`/pedidos/${Number(id)}`);
+      return data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || error.message);
+    }
   },
 
-  obtenerPorMesa: async (mesa_id) => {
-    const { data } = await api.get(`/pedidos/mesa/${Number(mesa_id)}`);
-    return data;
-  },
-
-  obtenerPorEstado: async (estado) => {
-    const { data } = await api.get(`/pedidos/estado/${sanitizeEstado(estado)}`);
-    return data;
-  },
-
+  // =========================
+  // ESTADOS
+  // =========================
   actualizarEstado: async (id, estado) => {
-    const idNum = Number(id);
-    const e = sanitizeEstado(estado);
-
-    const { data } = await api.put(
-      `/pedidos/${idNum}/estado`,
-      { estado: e },
-      { headers: { 'Content-Type': 'application/json' } }
-    );
-    return data;
+    try {
+      const { data } = await api.put(`/pedidos/${Number(id)}/estado`, { estado });
+      return data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || error.message);
+    }
   },
+
+  obtenerPorMesa: async (mesaId) => {
+    const { data } = await api.get(`/pedidos/mesa/${Number(mesaId)}`);
+    return data;
+  }
 };

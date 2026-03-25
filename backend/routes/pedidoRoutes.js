@@ -10,6 +10,7 @@ router.put('/:id', auth, pedidoController.actualizarPedido);
 router.delete('/:id', auth, pedidoController.eliminarPedido);
 router.get('/mesa/:mesa_id', auth, pedidoController.obtenerPedidosPorMesa);
 router.get('/estado/:estado', auth, pedidoController.obtenerPedidosPorEstado);
+router.put('/:id/detalles', auth, pedidoController.actualizarDetallesPedido);
 
 // ✅ Ruta específica para cambiar estado
 router.put('/:id/estado', auth, pedidoController.actualizarEstadoPedido);

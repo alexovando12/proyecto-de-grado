@@ -27,13 +27,17 @@ const InventarioPage = () => {
     const [selectedProducto, setSelectedProducto] = useState(null);
     
     // Formularios
-    const [ingredienteForm, setIngredienteForm] = useState({
-        nombre: '',
-        unidad: 'g',
-        stock_actual: 0,
-        stock_minimo: 1,
-        costo_por_unidad: 0
-    });
+const [ingredienteForm, setIngredienteForm] = useState({
+    nombre: '',
+    unidad: 'g',
+    stock_actual: 0,
+    stock_minimo: 1,
+    costo_por_unidad: 0,
+
+    // 🔥 NUEVO
+    tipo_ajuste: 'aumentar',
+    cantidad_ajuste: ''
+});
     
 const [productoForm, setProductoForm] = useState({
     nombre: '',
@@ -187,32 +191,59 @@ const cargarProductosPreparados = async () => {
     };
 
     // Funciones para ingredientes
-    const handleSubmitIngrediente = async (e) => {
-        e.preventDefault();
-        try {
-            setLoading(true);
-            setError(null);
-            console.log('Enviando formulario de ingrediente:', ingredienteForm);
-            
-            if (editingIngrediente) {
-                console.log('Actualizando ingrediente...');
-                await inventarioService.actualizarIngrediente(editingIngrediente.id, ingredienteForm);
-                setEditingIngrediente(null);
-            } else {
-                console.log('Creando nuevo ingrediente...');
-                await inventarioService.crearIngrediente(ingredienteForm);
+   const handleSubmitIngrediente = async (e) => {
+    e.preventDefault();
+
+    try {
+        setLoading(true);
+        setError(null);
+
+        // 🔥 SI ESTAMOS EDITANDO
+        if (editingIngrediente) {
+
+            const cantidad = Number(ingredienteForm.cantidad_ajuste || 0);
+
+            if (!Number.isFinite(cantidad) || cantidad < 0) {
+                throw new Error('Cantidad inválida');
             }
-            
-            resetIngredienteForm();
-            await cargarIngredientes();
-            await cargarAlertas();
-        } catch (err) {
-            console.error('Error al guardar ingrediente:', err);
-            setError('Error al guardar ingrediente: ' + (err.response?.data?.error || err.message));
-        } finally {
-            setLoading(false);
+
+            if (cantidad > 10000) {
+                throw new Error('Cantidad demasiado alta');
+            }
+
+            let ajuste = cantidad;
+
+            if (ingredienteForm.tipo_ajuste === 'disminuir') {
+                ajuste = -cantidad;
+            }
+
+            const dataToSend = {
+                nombre: ingredienteForm.nombre,
+                unidad: ingredienteForm.unidad,
+                stock_minimo: ingredienteForm.stock_minimo,
+                ajuste
+            };
+
+            await inventarioService.actualizarIngrediente(editingIngrediente.id, dataToSend);
+
+            setEditingIngrediente(null);
+
+        } else {
+            // 🔥 CREAR NORMAL
+            await inventarioService.crearIngrediente(ingredienteForm);
         }
-    };
+
+        resetIngredienteForm();
+        await cargarIngredientes();
+        await cargarAlertas();
+
+    } catch (err) {
+        console.error(err);
+        setError(err.message);
+    } finally {
+        setLoading(false);
+    }
+};
 
     const handleDeleteIngrediente = async (id) => {
         if (window.confirm('¿Estás seguro de eliminar este ingrediente?')) {
@@ -222,9 +253,9 @@ const cargarProductosPreparados = async () => {
                 await cargarIngredientes();
                 await cargarAlertas();
             } catch (error) {
-                console.error('Error al eliminar ingrediente:', error);
-                setError('Error al eliminar ingrediente: ' + (error.response?.data?.error || error.message));
-            } finally {
+  // 🔥 mostrar mensaje del backend
+  setError(error.message || 'No se pudo eliminar el ingrediente');
+} finally {
                 setLoading(false);
             }
         }
@@ -566,60 +597,124 @@ const handlePrepararProducto = async (productoId, cantidad) => {
                                 {editingIngrediente ? 'Editar Ingrediente' : 'Nuevo Ingrediente'}
                             </h3>
                             <form onSubmit={handleSubmitIngrediente}>
-                                <div className="ingrediente-form-grid">
-                                    <div className="ingrediente-form-group">
-                                        <label className="ingrediente-form-label">Nombre</label>
-                                        <input 
-                                            type="text" 
-                                            className="ingrediente-form-input" 
-                                            value={ingredienteForm.nombre}
-                                            onChange={(e) => setIngredienteForm({...ingredienteForm, nombre: e.target.value})}
-                                            required 
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                    <div className="ingrediente-form-group">
-                                        <label className="ingrediente-form-label">Unidad</label>
-                                        <select 
-                                            className="ingrediente-form-select" 
-                                            value={ingredienteForm.unidad}
-                                            onChange={(e) => setIngredienteForm({...ingredienteForm, unidad: e.target.value})}
-                                            disabled={loading}
-                                        >
-                                            <option value="g">Gramos (g)</option>
-                                            <option value="kg">Kilogramos (kg)</option>
-                                            <option value="L">Litros (L)</option>
-                                            <option value="ml">Mililitros (ml)</option>
-                                            <option value="unidades">Unidades</option>
-                                        </select>
-                                    </div>
-                                    <div className="ingrediente-form-group">
-                                        <label className="ingrediente-form-label">Stock Actual</label>
-                                        <input 
-                                            type="number" 
-                                            className="ingrediente-form-input" 
-                                            value={ingredienteForm.stock_actual}
-                                            onChange={(e) => setIngredienteForm({...ingredienteForm, stock_actual: parseFloat(e.target.value) || 0})}
-                                            min="0" 
-                                            step="0.01" 
-                                            required
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                    <div className="ingrediente-form-group">
-                                        <label className="ingrediente-form-label">Stock Mínimo</label>
-                                        <input 
-                                            type="number" 
-                                            className="ingrediente-form-input" 
-                                            value={ingredienteForm.stock_minimo}
-                                            onChange={(e) => setIngredienteForm({...ingredienteForm, stock_minimo: parseFloat(e.target.value) || 0})}
-                                            min="0" 
-                                            step="0.01" 
-                                            required
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                </div>
+   <div className="ingrediente-form-grid">
+
+  {/* NOMBRE */}
+  <div className="ingrediente-form-group">
+    <label className="ingrediente-form-label">Nombre</label>
+    <input 
+      type="text" 
+      className="ingrediente-form-input" 
+      value={ingredienteForm.nombre}
+      onChange={(e) => {
+        let val = e.target.value;
+        val = val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+
+        setIngredienteForm({
+          ...ingredienteForm,
+          nombre: val
+        });
+      }}
+      required
+      disabled={loading}
+    />
+  </div>
+
+  {/* UNIDAD */}
+  <div className="ingrediente-form-group">
+    <label className="ingrediente-form-label">Unidad</label>
+    <select 
+      className="ingrediente-form-select" 
+      value={ingredienteForm.unidad}
+      onChange={(e) => setIngredienteForm({...ingredienteForm, unidad: e.target.value})}
+      disabled={loading}
+    >
+      <option value="g">Gramos (g)</option>
+      <option value="kg">Kilogramos (kg)</option>
+      <option value="L">Litros (L)</option>
+      <option value="ml">Mililitros (ml)</option>
+      <option value="unidades">Unidades</option>
+    </select>
+  </div>
+
+  {/* STOCK ACTUAL (BLOQUEADO) */}
+<div className="ingrediente-form-group">
+  <label className="ingrediente-form-label">Stock Actual</label>
+  <input 
+    type="text" 
+    className="ingrediente-form-input"
+    value={ingredienteForm.stock_actual}
+    onChange={(e) => {
+      const val = e.target.value;
+
+      if (!/^\d*\.?\d*$/.test(val)) return;
+
+      setIngredienteForm({
+        ...ingredienteForm,
+        stock_actual: val
+      });
+    }}
+    disabled={!!editingIngrediente}
+  />
+</div>
+
+  {/* AJUSTE SOLO SI EDITAS */}
+  {editingIngrediente && (
+    <>
+      <div className="ingrediente-form-group">
+        <label className="ingrediente-form-label">Tipo de ajuste</label>
+        <select
+          className="ingrediente-form-select"
+          value={ingredienteForm.tipo_ajuste || 'aumentar'}
+          onChange={(e) =>
+            setIngredienteForm({
+              ...ingredienteForm,
+              tipo_ajuste: e.target.value
+            })
+          }
+        >
+          <option value="aumentar">Aumentar stock</option>
+          <option value="disminuir">Disminuir stock</option>
+        </select>
+      </div>
+
+      <div className="ingrediente-form-group">
+        <label className="ingrediente-form-label">Cantidad</label>
+        <input
+          type="text"
+          className="ingrediente-form-input"
+          value={ingredienteForm.cantidad_ajuste || ''}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (!/^\d*\.?\d*$/.test(val)) return;
+
+            setIngredienteForm({
+              ...ingredienteForm,
+              cantidad_ajuste: val
+            });
+          }}
+          placeholder="Ej: 10"
+        />
+      </div>
+    </>
+  )}
+
+  {/* STOCK MINIMO */}
+  <div className="ingrediente-form-group">
+    <label className="ingrediente-form-label">Stock Mínimo</label>
+    <input 
+      type="number" 
+      className="ingrediente-form-input" 
+      value={ingredienteForm.stock_minimo}
+      onChange={(e) => setIngredienteForm({...ingredienteForm, stock_minimo: parseFloat(e.target.value) || 0})}
+      min="0" 
+      step="0.01" 
+      required
+      disabled={loading}
+    />
+  </div>
+
+</div>
                                 <div className="ingrediente-form-actions">
                                     <button type="submit" className="btn btn-primary" disabled={loading}>
                                         {loading ? 'Guardando...' : (editingIngrediente ? 'Actualizar' : 'Guardar')}
@@ -803,7 +898,11 @@ const handlePrepararProducto = async (productoId, cantidad) => {
                                             <div className="ingrediente-acciones">
                                                 <button className="btn btn-icon" onClick={() => {
                                                     setEditingIngrediente(ingrediente);
-                                                    setIngredienteForm(ingrediente);
+                                                    setIngredienteForm({
+                                                        ...ingrediente,
+                                                        tipo_ajuste: 'aumentar',
+                                                        cantidad_ajuste: ''
+                                                    });
                                                     setShowIngredienteForm(true);
                                                 }} title="Editar" disabled={loading}>
                                                     ✏️

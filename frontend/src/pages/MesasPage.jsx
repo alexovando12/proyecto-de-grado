@@ -10,7 +10,7 @@ const MesasPage = () => {
   const [mesas, setMesas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ numero: '', capacidad: 4 });
+  const [formData, setFormData] = useState({ capacidad: 4 });
   const [editingMesa, setEditingMesa] = useState(null);
 
   useEffect(() => {
@@ -102,12 +102,12 @@ const MesasPage = () => {
 
   const handleDelete = async (id) => {
     if (window.confirm('¿Estás seguro de eliminar esta mesa?')) {
-      try {
-        await mesaService.eliminar(id);
-        cargarMesas();
-      } catch (error) {
-        console.error('Error al eliminar mesa:', error);
-      }
+        try {
+          await mesaService.eliminar(id);
+          cargarMesas();
+        } catch (error) {
+          alert(error.message);
+        }
     }
   };
 
@@ -162,16 +162,6 @@ const MesasPage = () => {
             <div className="mesa-form">
               <h3 className="mesa-form-title">{editingMesa ? 'Editar Mesa' : 'Nueva Mesa'}</h3>
               <form onSubmit={handleSubmit}>
-                <div className="mesa-form-group">
-                  <label className="mesa-form-label">Número</label>
-                  <input
-                    type="text"
-                    className="mesa-form-input"
-                    value={formData.numero}
-                    onChange={(e) => setFormData({...formData, numero: e.target.value})}
-                    required
-                  />
-                </div>
                 <div className="mesa-form-group">
                   <label className="mesa-form-label">Capacidad</label>
                   <input

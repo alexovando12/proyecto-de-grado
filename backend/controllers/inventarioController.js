@@ -9,12 +9,11 @@ const MovimientoInventario = require('../models/MovimientoInventario');
 // =========================
 exports.crearIngrediente = async (req, res) => {
   try {
-    const {
-      nombre,
-      unidad = 'g',
-      stock_actual = 0,
-      stock_minimo = 1
-    } = req.body;
+const { nombre, unidad, stock_actual, stock_minimo } = req.body;
+
+if (!nombre || typeof nombre !== 'string') {
+  return res.status(400).json({ error: 'Nombre inválido' });
+};
 
     const nuevo = {
       nombre,
@@ -46,15 +45,41 @@ exports.eliminarIngrediente = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await Ingrediente.eliminar(id);
+
     if (result) {
-      res.json({ success: true, message: 'Ingrediente eliminado correctamente' });
+      return res.json({ success: true, message: 'Ingrediente eliminado correctamente' });
     } else {
-      res.status(404).json({ error: 'Ingrediente no encontrado' });
+      return res.status(404).json({ error: 'Ingrediente no encontrado' });
     }
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+
+  // 🔥 ERROR CONTROLADO (RECETAS)
+  if (error.message.includes("No puedes eliminar")) {
+    return res.status(400).json({
+      error: error.message
+    });
   }
+
+  // 🔥 ERRORES DE BASE DE DATOS (FK)
+  if (
+    error.message.includes("violates foreign key constraint") ||
+    error.message.includes("llave foránea") ||
+    error.message.includes("movimientos_inventario_ingrediente_id_fkey")
+  ) {
+    return res.status(400).json({
+      error: "No se puede borrar este ingrediente porque está siendo utilizado en recetas o movimientos de inventario."
+    });
+  }
+
+  console.error("❌ Error al eliminar ingrediente:", error);
+
+  return res.status(500).json({
+    error: "Error interno al eliminar ingrediente"
+  });
+}
 };
+
 
 exports.obtenerIngredientes = async (req, res) => {
   try {
@@ -152,7 +177,9 @@ exports.crearProductoPreparado = async (req, res) => {
 
     // 🧩 Validaciones básicas
     if (!Array.isArray(ingredientes) || ingredientes.length === 0) {
-      throw new Error('La propiedad "ingredientes" debe ser un arreglo con al menos un ingrediente.');
+      return res.status(400).json({
+        error: 'La propiedad "ingredientes" debe ser un arreglo con al menos un ingrediente.'
+      });
     }
 
     // 1️⃣ Crear producto preparado
@@ -164,53 +191,64 @@ exports.crearProductoPreparado = async (req, res) => {
     );
 
     const productoPreparadoId = result.rows[0].id;
-    const stockProducto = parseFloat(result.rows[0].stock_actual || 0);
 
-    // 2️⃣ Insertar los ingredientes en recetas
+    // 2️⃣ Insertar ingredientes en la receta + validar stock
     for (const ing of ingredientes) {
       const ingredienteId = parseInt(ing.ingrediente_id);
       const cantidadPorUnidad = parseFloat(ing.cantidad);
 
       if (isNaN(ingredienteId) || isNaN(cantidadPorUnidad)) continue;
 
+      // 🔍 Validar stock ANTES de descontar
+      const stockRes = await client.query(
+        'SELECT stock_actual, nombre, unidad FROM ingredientes WHERE id = $1',
+        [ingredienteId]
+      );
+
+      if (stockRes.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          error: `El ingrediente con ID ${ingredienteId} no existe`
+        });
+      }
+
+      const disponible = parseFloat(stockRes.rows[0].stock_actual);
+      const nombreIngrediente = stockRes.rows[0].nombre;
+      const unidadIngrediente = stockRes.rows[0].unidad;
+
+      // ❌ No permitir crear producto preparado si falta stock
+      if (disponible < cantidadPorUnidad) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          error: `Stock insuficiente de ${nombreIngrediente}. Disponible: ${disponible} ${unidadIngrediente}, requiere: ${cantidadPorUnidad} ${unidadIngrediente}`
+        });
+      }
+
+      // ✔ Agregar receta
       await client.query(
         `INSERT INTO recetas (producto_preparado_id, ingrediente_id, cantidad)
          VALUES ($1, $2, $3)`,
         [productoPreparadoId, ingredienteId, cantidadPorUnidad]
       );
 
-      // 3️⃣ Calcular descuento total = cantidadPorUnidad × stock_actual del producto
-      const cantidadTotalDescontar = cantidadPorUnidad * stockProducto;
+      // ✔ Descontar stock porque ya está validado
+      await client.query(
+        `UPDATE ingredientes
+         SET stock_actual = stock_actual - $1
+         WHERE id = $2`,
+        [cantidadPorUnidad, ingredienteId]
+      );
 
-// 3️⃣ Descontar directamente la cantidad total indicada en la receta (ya representa todo el lote)
-if (cantidadPorUnidad > 0) {
-  // Verificar stock suficiente
-  const stockRes = await client.query(
-    'SELECT stock_actual, nombre FROM ingredientes WHERE id = $1',
-    [ingredienteId]
-  );
-
-  if (stockRes.rows.length > 0) {
-    const disponible = parseFloat(stockRes.rows[0].stock_actual);
-    const nombreIngrediente = stockRes.rows[0].nombre;
-
-    if (disponible < cantidadPorUnidad) {
-      console.warn(`⚠️ Stock insuficiente de ${nombreIngrediente}. Disponible: ${disponible}, requerido: ${cantidadPorUnidad}`);
-    }
-
-    // 4️⃣ Actualizar stock del ingrediente
-    await client.query(
-      `UPDATE ingredientes
-       SET stock_actual = stock_actual - $1
-       WHERE id = $2`,
-      [cantidadPorUnidad, ingredienteId]
-    );
-  }
-}
-
+      // ✔ Registrar movimiento de inventario
+      await client.query(
+        `INSERT INTO movimientos_inventario (tipo_inventario, ingrediente_id, tipo, cantidad, motivo, usuario_id)
+         VALUES ('ingrediente', $1, 'salida', $2, 'Creación de producto preparado', 1)`,
+        [ingredienteId, cantidadPorUnidad]
+      );
     }
 
     await client.query('COMMIT');
+
     res.status(201).json({
       success: true,
       message: 'Producto preparado creado correctamente.',
@@ -225,6 +263,7 @@ if (cantidadPorUnidad > 0) {
     client.release();
   }
 };
+
 
 
 
