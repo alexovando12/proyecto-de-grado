@@ -4,7 +4,11 @@ import { pedidoService } from "../services/pedidoService.js";
 import PedidoForm from "../components/pedidos/PedidoForm.jsx";
 import { io } from "socket.io-client";
 
-const socket = io("http://localhost:3000");
+import { io } from "socket.io-client";
+
+const socket = io(import.meta.env.VITE_API_URL, {
+  transports: ["websocket"],
+});
 
 const toNum = (v) => {
   const n = Number(String(v ?? '').replace(',', '.'));

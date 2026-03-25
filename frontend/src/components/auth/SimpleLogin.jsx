@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 const SimpleLogin = () => {
   const [email, setEmail] = useState('admin@garden.com');
@@ -15,8 +15,11 @@ const SimpleLogin = () => {
 
     try {
       console.log('🚀 Enviando login:', { email, password: '***' });
-      
-      const response = await fetch('http://localhost:3000/api/auth/login', {
+
+      // 🔥 URL DINÁMICA (YA NO localhost)
+      const API_URL = import.meta.env.VITE_API_URL;
+
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -43,13 +46,17 @@ const SimpleLogin = () => {
       if (response.ok) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.usuario));
+
         setMessage('✅ ¡Login exitoso! Redirigiendo...');
+
         setTimeout(() => {
           window.location.href = '/dashboard';
         }, 1500);
+
       } else {
         setMessage(`❌ Error: ${data.error || 'Credenciales inválidas'}`);
       }
+
     } catch (error) {
       console.error('💥 Error de conexión:', error);
       setMessage(`💥 Error de conexión: ${error.message}`);
@@ -71,6 +78,7 @@ const SimpleLogin = () => {
           required
         />
       </div>
+
       <div className="form-group">
         <label className="form-label">Contraseña</label>
         <input
@@ -82,6 +90,7 @@ const SimpleLogin = () => {
           required
         />
       </div>
+
       <button
         type="submit"
         className="auth-button"
