@@ -244,7 +244,7 @@ static async obtenerPorMesaConDetalles(mesa_id) {
       d.cantidad,
       pr.nombre as producto_nombre
     FROM pedidos p
-    LEFT JOIN pedido_detalles d ON d.pedido_id = p.id
+    LEFT JOIN detalles_pedido d ON d.pedido_id = p.id
     LEFT JOIN productos pr ON pr.id = d.producto_id
     WHERE p.mesa_id = $1
     ORDER BY p.id DESC
