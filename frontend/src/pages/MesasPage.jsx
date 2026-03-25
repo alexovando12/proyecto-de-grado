@@ -59,14 +59,16 @@ const MesasPage = () => {
       }));
 
       // Traemos pedidos de todas las mesas en paralelo
-      const pedidosList = await Promise.all(
-        lista.map(m => obtenerPedidosDeMesa(m.id))
-      );
+const enriquecidas = lista.map((m) => {
+  const pedidosDeMesa = (todosLosPedidos || []).filter(
+    p => Number(p.mesa_id) === Number(m.id)
+  );
 
-      const enriquecidas = lista.map((m, i) => ({
-        ...m,
-        estado: infiereEstadoMesa(m, pedidosList[i]), // ← aquí se fija “ocupada/disponible”
-      }));
+  return {
+    ...m,
+    estado: infiereEstadoMesa(m, pedidosDeMesa),
+  };
+});
 
       setMesas(enriquecidas);
     } catch (error) {

@@ -222,10 +222,16 @@ exports.eliminarPedido = async (req, res) => {
 ------------------------------------------- */
 exports.obtenerPedidosPorMesa = async (req, res) => {
   try {
-    const { mesa_id } = req.params;
-    const pedidos = await Pedido.obtenerPorMesaConDetalles(mesa_id);
+    const { id } = req.params;
+
+    console.log("📥 Mesa ID:", id);
+
+    const pedidos = await Pedido.obtenerPorMesaConDetalles(Number(id));
+
     res.json(pedidos);
+
   } catch (error) {
+    console.error("💥 ERROR:", error);
     res.status(500).json({ error: error.message });
   }
 };
