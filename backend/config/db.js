@@ -1,15 +1,15 @@
-﻿// config/db.js
-const { Pool } = require('pg');
+﻿const { Pool } = require('pg');
 require('dotenv').config();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
+    require: true,
     rejectUnauthorized: false,
   },
 });
 
-// Probar conexión
+// Test conexión
 pool.connect((err, client, release) => {
   if (err) {
     console.error('❌ Error conectando a PostgreSQL:', err.stack);
