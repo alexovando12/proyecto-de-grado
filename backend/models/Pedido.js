@@ -228,6 +228,54 @@ class Pedido {
       client.release();
     }
   }
+  // =========================
+// OBTENER PEDIDOS POR MESA 🔥
+// =========================
+static async obtenerPorMesaConDetalles(mesa_id) {
+  const result = await pool.query(`
+    SELECT 
+      p.id,
+      p.mesa_id,
+      p.estado,
+      p.total,
+      d.id as detalle_id,
+      d.producto_id,
+      d.producto_preparado_id,
+      d.cantidad,
+      pr.nombre as producto_nombre
+    FROM pedidos p
+    LEFT JOIN pedido_detalles d ON d.pedido_id = p.id
+    LEFT JOIN productos pr ON pr.id = d.producto_id
+    WHERE p.mesa_id = $1
+    ORDER BY p.id DESC
+  `, [mesa_id]);
+
+  const pedidosMap = {};
+
+  for (const row of result.rows) {
+    if (!pedidosMap[row.id]) {
+      pedidosMap[row.id] = {
+        id: row.id,
+        mesa_id: row.mesa_id,
+        estado: row.estado,
+        total: row.total,
+        detalles: []
+      };
+    }
+
+    if (row.detalle_id) {
+      pedidosMap[row.id].detalles.push({
+        id: row.detalle_id,
+        producto_id: row.producto_id,
+        producto_preparado_id: row.producto_preparado_id,
+        producto_nombre: row.producto_nombre,
+        cantidad: row.cantidad
+      });
+    }
+  }
+
+  return Object.values(pedidosMap);
+}
 }
 
 module.exports = Pedido;
