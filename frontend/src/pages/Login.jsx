@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext.jsx';
 
 const Login = () => {
   const [email, setEmail] = useState('admin@garden.com');
@@ -14,8 +13,11 @@ const Login = () => {
 
     try {
       console.log('🚀 Enviando login:', { email, password: '***' });
-      
-      const response = await fetch('http://localhost:3000/api/auth/login', {
+
+      // 🔥 URL DINÁMICA (PRODUCCIÓN)
+      const API_URL = import.meta.env.VITE_API_URL;
+
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,13 +44,17 @@ const Login = () => {
       if (response.ok) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.usuario));
+
         setMessage('✅ ¡Login exitoso! Redirigiendo...');
+
         setTimeout(() => {
           window.location.href = '/dashboard';
         }, 1500);
+
       } else {
         setMessage(`❌ Error: ${data.error || 'Credenciales inválidas'}`);
       }
+
     } catch (error) {
       console.error('💥 Error de conexión:', error);
       setMessage(`💥 Error de conexión: ${error.message}`);
