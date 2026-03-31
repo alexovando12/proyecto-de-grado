@@ -76,7 +76,7 @@ async function descontarStockProducto(client, producto_id, cantidad) {
     }
   }
 }
-async function devolverStockProducto(producto_id, cantidad) {
+async function devolverStockProducto(client, producto_id, cantidad) {
   const { rows } = await client.query('SELECT * FROM productos WHERE id = $1', [producto_id]);
   const producto = rows[0];
 
@@ -141,7 +141,7 @@ exports.obtenerPedido = async (req, res) => {
 exports.crearPedido = async (req, res) => {
   const client = await pool.connect();
   try {
-    const { mesa_id, usuario_id, items } = req.body;
+    const { mesa_id, usuario_id, detalles } = req.body;
 
     await client.query('BEGIN');
 
@@ -156,7 +156,7 @@ exports.crearPedido = async (req, res) => {
     let total = 0;
 
     // Crear cada detalle y descontar stock
-    for (const detalle of items) {
+    for (const detalle of detalles) {
       await client.query(
         `INSERT INTO detalles_pedido (pedido_id, producto_id, cantidad, notas, precio, estado)
          VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -166,7 +166,7 @@ exports.crearPedido = async (req, res) => {
       total += detalle.precio * detalle.cantidad;
 
       // ⚙️ Descontar del inventario según tipo
-      await descontarStockProducto(client, detalle.producto_id, detalle.cantidad);
+      await descontarStockProducto(client, detalle.producto_id, diferencia);
     }
 
     await client.query(`UPDATE pedidos SET total = $1 WHERE id = $2`, [total, pedido.id]);
@@ -222,11 +222,11 @@ exports.eliminarPedido = async (req, res) => {
 ------------------------------------------- */
 exports.obtenerPedidosPorMesa = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { mesa_id } = req.params;
 
     console.log("📥 Mesa ID:", id);
 
-    const pedidos = await Pedido.obtenerPorMesaConDetalles(Number(id));
+    const pedidos = await Pedido.obtenerPorMesaConDetalles(Number(mesa_id));
 
     res.json(pedidos);
 
@@ -380,7 +380,7 @@ exports.editarPedido = async (req, res) => {
     const { detalles } = req.body;
 
     let total = 0;
-    for (const detalle of items) {
+    for (const detalle of detalles) {
       await DetallePedido.crear({
         pedido_id: id,
         producto_id: detalle.producto_id,

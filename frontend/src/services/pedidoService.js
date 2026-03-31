@@ -30,11 +30,11 @@ export const pedidoService = {
         throw new Error('Debe seleccionar una mesa');
       }
 
-      if (!Array.isArray(pedido.items) || pedido.items.length === 0) {
+      if (!Array.isArray(pedido.detalles) || pedido.detalles.length === 0) {
         throw new Error('El pedido debe tener al menos un item');
       }
 
-      const items = pedido.items.map(i => ({
+      const detalles = pedido.detalles.map(i => ({
         producto_id: i.producto_id || null,
         producto_preparado_id: i.producto_preparado_id || null,
         cantidad: Number(i.cantidad)
@@ -42,7 +42,7 @@ export const pedidoService = {
 
       const { data } = await api.post('/pedidos', {
         mesa_id: Number(pedido.mesa_id),
-        items
+        detalles
       });
 
       return data;
@@ -58,11 +58,11 @@ export const pedidoService = {
   actualizar: async (id, pedido) => {
     try {
 
-      if (!Array.isArray(pedido.items) || pedido.items.length === 0) {
+      if (!Array.isArray(pedido.detalles) || pedido.detalles.length === 0) {
         throw new Error('El pedido debe tener items');
       }
 
-      const items = pedido.items.map(i => ({
+      const detalles = pedido.detalles.map(i => ({
         producto_id: i.producto_id || null,
         producto_preparado_id: i.producto_preparado_id || null,
         cantidad: Number(i.cantidad)
@@ -70,7 +70,7 @@ export const pedidoService = {
 
       const { data } = await api.put(`/pedidos/${Number(id)}`, {
         mesa_id: Number(pedido.mesa_id),
-        items
+        detalles
       });
 
       return data;
