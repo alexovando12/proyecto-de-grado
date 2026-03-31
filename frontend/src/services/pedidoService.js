@@ -104,8 +104,13 @@ export const pedidoService = {
     }
   },
 
-  obtenerPorMesa: async (mesaId) => {
+obtenerPorMesa: async (mesaId) => {
+  try {
     const { data } = await api.get(`/pedidos/mesa/${Number(mesaId)}`);
     return data;
+  } catch (error) {
+    console.warn("Error mesa", mesaId);
+    return []; // 🔥 EVITA QUE REVIENTE TODO
   }
+}
 };

@@ -261,7 +261,7 @@ static async obtenerTodosConDetalles() {
       };
     }
 
-    if (row.detalle_id) {
+    if (row.detalle_id && row.producto_id) {
       pedidosMap[row.id].detalles.push({
         producto_id: row.producto_id,
         producto_nombre: row.producto_nombre,
@@ -306,7 +306,7 @@ static async obtenerPorIdConDetalles(id) {
       };
     }
 
-    if (row.detalle_id) {
+    if (row.detalle_id && row.producto_id) {
       pedidos[row.id].detalles.push({
         producto_id: row.producto_id,
         producto_nombre: row.producto_nombre,
@@ -353,7 +353,7 @@ static async obtenerPorEstadoConDetalles(estado) {
       };
     }
 
-    if (row.detalle_id) {
+    if (row.detalle_id && row.producto_id) {
       pedidosMap[row.id].detalles.push({
         producto_id: row.producto_id,
         producto_nombre: row.producto_nombre,
