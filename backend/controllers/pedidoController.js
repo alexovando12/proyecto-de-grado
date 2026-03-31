@@ -135,16 +135,6 @@ exports.obtenerPedido = async (req, res) => {
   }
 };
 
-const pedidoExistente = await pool.query(
-  `SELECT * FROM pedidos 
-   WHERE mesa_id = $1 
-   AND estado IN ('pendiente','confirmado','preparando')`,
-  [mesa_id]
-);
-
-if (pedidoExistente.rows.length > 0) {
-  return res.json(pedidoExistente.rows[0]); // 🔥 NO ERROR
-}
 /* ------------------------------------------
    🔹 Crear pedido (DESCUENTA STOCK)
 ------------------------------------------- */
@@ -153,7 +143,18 @@ exports.crearPedido = async (req, res) => {
   try {
     const { mesa_id, usuario_id, detalles } = req.body;
 
+    const pedidoExistente = await pool.query(
+      `SELECT * FROM pedidos 
+       WHERE mesa_id = $1 
+       AND estado IN ('pendiente','confirmado','preparando')`,
+      [mesa_id]
+    );
+
+    if (pedidoExistente.rows.length > 0) {
+      throw new Error('La mesa ya está ocupada o reservada.');
+    }
     await client.query('BEGIN');
+
 
     // 🚀 Crear pedido inicial
     const pedidoResult = await client.query(
