@@ -382,7 +382,9 @@ static async obtenerPorMesaConDetalles(mesa_id) {
       pr.nombre as producto_nombre
     FROM pedidos p
     LEFT JOIN detalles_pedido d ON d.pedido_id = p.id
-    LEFT JOIN productos pr ON pr.id = d.producto_id
+    LEFT JOIN productos pr 
+ON pr.id = d.producto_id 
+AND d.producto_id IS NOT NULL
     WHERE p.mesa_id = $1
     ORDER BY p.id DESC
   `, [mesa_id]);
@@ -400,7 +402,7 @@ static async obtenerPorMesaConDetalles(mesa_id) {
       };
     }
 
-    if (row.detalle_id) {
+    if (row.detalle_id && row.producto_id) {
       pedidosMap[row.id].detalles.push({
         id: row.detalle_id,
         producto_id: row.producto_id,
