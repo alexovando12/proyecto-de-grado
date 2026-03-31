@@ -5,8 +5,8 @@ const DetallePedido = require('../models/DetallePedido');
 /* ------------------------------------------
    🔧 Helper para descontar stock según tipo
 ------------------------------------------- */
-async function descontarStockProducto(producto_id, cantidad) {
-  const { rows } = await pool.query('SELECT * FROM productos WHERE id = $1', [producto_id]);
+async function descontarStockProducto(client, producto_id, cantidad) {
+  const { rows } = await client.query('SELECT * FROM productos WHERE id = $1', [producto_id]);
   const producto = rows[0];
 
   if (!producto) return;
@@ -18,7 +18,7 @@ async function descontarStockProducto(producto_id, cantidad) {
       throw new Error(`El producto ${producto.nombre} no tiene un producto preparado asociado`);
     }
     
-    const prepResult = await pool.query('SELECT * FROM productos_preparados WHERE id = $1', [producto.producto_preparado_id]);
+    const prepResult = await client.query('SELECT * FROM productos_preparados WHERE id = $1', [producto.producto_preparado_id]);
     const productoPreparado = prepResult.rows[0];
     
     if (!productoPreparado) {
@@ -30,7 +30,7 @@ async function descontarStockProducto(producto_id, cantidad) {
     }
     
     // Descontar stock del producto preparado
-    await pool.query(`
+    await client.query(`
       UPDATE productos_preparados
       SET stock_actual = stock_actual - $1,
           fecha_actualizacion = CURRENT_TIMESTAMP
@@ -39,7 +39,7 @@ async function descontarStockProducto(producto_id, cantidad) {
 
   // 🥩 Si es tipo "general", buscar su receta y descontar de ingredientes
   } else if (producto.tipo_inventario === 'general') {
-    const receta = await pool.query(`
+    const receta = await client.query(`
       SELECT ingrediente_id, cantidad
       FROM recetas
       WHERE producto_id = $1
@@ -56,7 +56,7 @@ async function descontarStockProducto(producto_id, cantidad) {
       const requerido = cantidadIngrediente * cantidadPedida;
 
       // Verificar stock de ingrediente
-      const ingResult = await pool.query('SELECT * FROM ingredientes WHERE id = $1', [r.ingrediente_id]);
+      const ingResult = await client.query('SELECT * FROM ingredientes WHERE id = $1', [r.ingrediente_id]);
       const ingrediente = ingResult.rows[0];
       
       if (!ingrediente) {
@@ -68,7 +68,7 @@ async function descontarStockProducto(producto_id, cantidad) {
       }
 
       // Descontar stock del ingrediente
-      await pool.query(`
+      await client.query(`
         UPDATE ingredientes
         SET stock_actual = stock_actual - $1
         WHERE id = $2
@@ -77,20 +77,20 @@ async function descontarStockProducto(producto_id, cantidad) {
   }
 }
 async function devolverStockProducto(producto_id, cantidad) {
-  const { rows } = await pool.query('SELECT * FROM productos WHERE id = $1', [producto_id]);
+  const { rows } = await client.query('SELECT * FROM productos WHERE id = $1', [producto_id]);
   const producto = rows[0];
 
   if (!producto) return;
 
   if (producto.tipo_inventario === 'preparado') {
-    await pool.query(`
+    await client.query(`
       UPDATE productos_preparados
       SET stock_actual = stock_actual + $1
       WHERE id = $2
     `, [cantidad, producto.producto_preparado_id]);
 
   } else if (producto.tipo_inventario === 'general') {
-    const receta = await pool.query(`
+    const receta = await client.query(`
       SELECT ingrediente_id, cantidad
       FROM recetas
       WHERE producto_id = $1
@@ -99,7 +99,7 @@ async function devolverStockProducto(producto_id, cantidad) {
     for (const r of receta.rows) {
       const devolver = parseFloat(r.cantidad) * cantidad;
 
-      await pool.query(`
+      await client.query(`
         UPDATE ingredientes
         SET stock_actual = stock_actual + $1
         WHERE id = $2
@@ -141,7 +141,7 @@ exports.obtenerPedido = async (req, res) => {
 exports.crearPedido = async (req, res) => {
   const client = await pool.connect();
   try {
-    const { mesa_id, usuario_id, detalles } = req.body;
+    const { mesa_id, usuario_id, items } = req.body;
 
     await client.query('BEGIN');
 
@@ -156,7 +156,7 @@ exports.crearPedido = async (req, res) => {
     let total = 0;
 
     // Crear cada detalle y descontar stock
-    for (const detalle of detalles) {
+    for (const detalle of items) {
       await client.query(
         `INSERT INTO detalles_pedido (pedido_id, producto_id, cantidad, notas, precio, estado)
          VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -166,7 +166,7 @@ exports.crearPedido = async (req, res) => {
       total += detalle.precio * detalle.cantidad;
 
       // ⚙️ Descontar del inventario según tipo
-      await descontarStockProducto(detalle.producto_id, detalle.cantidad);
+      await descontarStockProducto(client, detalle.producto_id, detalle.cantidad);
     }
 
     await client.query(`UPDATE pedidos SET total = $1 WHERE id = $2`, [total, pedido.id]);
@@ -380,7 +380,7 @@ exports.editarPedido = async (req, res) => {
     const { detalles } = req.body;
 
     let total = 0;
-    for (const detalle of detalles) {
+    for (const detalle of items) {
       await DetallePedido.crear({
         pedido_id: id,
         producto_id: detalle.producto_id,

@@ -228,6 +228,143 @@ class Pedido {
       client.release();
     }
   }
+
+  // 🔥 OBTENER TODOS CON DETALLES
+static async obtenerTodosConDetalles() {
+  const result = await pool.query(`
+    SELECT 
+      p.id,
+      p.mesa_id,
+      p.estado,
+      p.total,
+      d.id as detalle_id,
+      d.producto_id,
+      d.cantidad,
+      d.precio,
+      pr.nombre as producto_nombre
+    FROM pedidos p
+    LEFT JOIN detalles_pedido d ON d.pedido_id = p.id
+    LEFT JOIN productos pr ON pr.id = d.producto_id
+    ORDER BY p.id DESC
+  `);
+
+  const pedidosMap = {};
+
+  for (const row of result.rows) {
+    if (!pedidosMap[row.id]) {
+      pedidosMap[row.id] = {
+        id: row.id,
+        mesa_id: row.mesa_id,
+        estado: row.estado,
+        total: row.total,
+        detalles: []
+      };
+    }
+
+    if (row.detalle_id) {
+      pedidosMap[row.id].detalles.push({
+        producto_id: row.producto_id,
+        producto_nombre: row.producto_nombre,
+        cantidad: row.cantidad,
+        precio: row.precio
+      });
+    }
+  }
+
+  return Object.values(pedidosMap);
+}
+
+
+// 🔥 OBTENER POR ID
+static async obtenerPorIdConDetalles(id) {
+  const result = await pool.query(`
+    SELECT 
+      p.id,
+      p.mesa_id,
+      p.estado,
+      p.total,
+      d.id as detalle_id,
+      d.producto_id,
+      d.cantidad,
+      d.precio,
+      pr.nombre as producto_nombre
+    FROM pedidos p
+    LEFT JOIN detalles_pedido d ON d.pedido_id = p.id
+    LEFT JOIN productos pr ON pr.id = d.producto_id
+    WHERE p.id = $1
+  `, [id]);
+
+  const pedidos = {};
+  for (const row of result.rows) {
+    if (!pedidos[row.id]) {
+      pedidos[row.id] = {
+        id: row.id,
+        mesa_id: row.mesa_id,
+        estado: row.estado,
+        total: row.total,
+        detalles: []
+      };
+    }
+
+    if (row.detalle_id) {
+      pedidos[row.id].detalles.push({
+        producto_id: row.producto_id,
+        producto_nombre: row.producto_nombre,
+        cantidad: row.cantidad,
+        precio: row.precio
+      });
+    }
+  }
+
+  return pedidos[id];
+}
+
+
+// 🔥 OBTENER POR ESTADO
+static async obtenerPorEstadoConDetalles(estado) {
+  const result = await pool.query(`
+    SELECT 
+      p.id,
+      p.mesa_id,
+      p.estado,
+      p.total,
+      d.id as detalle_id,
+      d.producto_id,
+      d.cantidad,
+      d.precio,
+      pr.nombre as producto_nombre
+    FROM pedidos p
+    LEFT JOIN detalles_pedido d ON d.pedido_id = p.id
+    LEFT JOIN productos pr ON pr.id = d.producto_id
+    WHERE p.estado = $1
+    ORDER BY p.id DESC
+  `, [estado]);
+
+  const pedidosMap = {};
+
+  for (const row of result.rows) {
+    if (!pedidosMap[row.id]) {
+      pedidosMap[row.id] = {
+        id: row.id,
+        mesa_id: row.mesa_id,
+        estado: row.estado,
+        total: row.total,
+        detalles: []
+      };
+    }
+
+    if (row.detalle_id) {
+      pedidosMap[row.id].detalles.push({
+        producto_id: row.producto_id,
+        producto_nombre: row.producto_nombre,
+        cantidad: row.cantidad,
+        precio: row.precio
+      });
+    }
+  }
+
+  return Object.values(pedidosMap);
+}
   // =========================
 // OBTENER PEDIDOS POR MESA 🔥
 // =========================
