@@ -177,8 +177,7 @@ const detalles = items;
 
       total += detalle.precio * detalle.cantidad;
 
-      // ⚙️ Descontar del inventario según tipo
-      await descontarStockProducto(client, detalle.producto_id);
+await descontarStockProducto(client, detalle.producto_id, detalle.cantidad);
     }
 
     await client.query(`UPDATE pedidos SET total = $1 WHERE id = $2`, [total, pedido.id]);
