@@ -141,7 +141,8 @@ exports.obtenerPedido = async (req, res) => {
 exports.crearPedido = async (req, res) => {
   const client = await pool.connect();
   try {
-    const { mesa_id, usuario_id, detalles } = req.body;
+    const { mesa_id, usuario_id, items } = req.body;
+const detalles = items;
 
     const pedidoExistente = await pool.query(
       `SELECT * FROM pedidos 
@@ -177,7 +178,7 @@ exports.crearPedido = async (req, res) => {
       total += detalle.precio * detalle.cantidad;
 
       // ⚙️ Descontar del inventario según tipo
-      await descontarStockProducto(client, detalle.producto_id, diferencia);
+      await descontarStockProducto(client, detalle.producto_id);
     }
 
     await client.query(`UPDATE pedidos SET total = $1 WHERE id = $2`, [total, pedido.id]);
@@ -235,7 +236,7 @@ exports.obtenerPedidosPorMesa = async (req, res) => {
   try {
     const { mesa_id } = req.params;
 
-    console.log("📥 Mesa ID:", id);
+    console.log("📥 Mesa ID:", mesa_id);
 
     const pedidos = await Pedido.obtenerPorMesaConDetalles(Number(mesa_id));
 
@@ -322,7 +323,7 @@ exports.actualizarDetallesPedido = async (req, res) => {
     for (const [producto_id, det] of actualesMap.entries()) {
       if (!nuevosMap.has(producto_id)) {
         // devolver stock
-        await devolverStockProducto(producto_id, det.cantidad);
+        await devolverStockProducto(client, producto_id, det.cantidad);
         await client.query(`DELETE FROM detalles_pedido WHERE id = $1`, [det.id]);
       }
     }
@@ -335,9 +336,9 @@ exports.actualizarDetallesPedido = async (req, res) => {
         const diferencia = det.cantidad - actual.cantidad;
 
         if (diferencia > 0) {
-          await descontarStockProducto(det.producto_id, diferencia);
+          await descontarStockProducto(client, det.producto_id, diferencia);
         } else if (diferencia < 0) {
-          await devolverStockProducto(det.producto_id, Math.abs(diferencia));
+          await devolverStockProducto(client, det.producto_id, Math.abs(diferencia));
         }
 
         await client.query(
@@ -352,7 +353,7 @@ exports.actualizarDetallesPedido = async (req, res) => {
     // 3. Agregar productos nuevos
     for (const det of nuevosDetalles) {
       if (!actualesMap.has(det.producto_id)) {
-        await descontarStockProducto(det.producto_id, det.cantidad);
+        await descontarStockProducto(client, det.producto_id, det.cantidad);
 
         await client.query(
           `INSERT INTO detalles_pedido (pedido_id, producto_id, cantidad, notas, precio)
