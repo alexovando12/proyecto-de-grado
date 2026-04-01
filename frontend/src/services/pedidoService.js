@@ -22,63 +22,63 @@ export const pedidoService = {
   // =========================
   // CREAR PEDIDO 🔥
   // =========================
-  crear: async (pedido) => {
-    try {
-
-      // 🔥 VALIDACIÓN FRONT
-      if (!pedido.mesa_id) {
-        throw new Error('Debe seleccionar una mesa');
-      }
-
-      if (!Array.isArray(pedido.detalles) || pedido.detalles.length === 0) {
-        throw new Error('El pedido debe tener al menos un item');
-      }
-
-      const detalles = pedido.detalles.map(i => ({
-        producto_id: i.producto_id || null,
-        producto_preparado_id: i.producto_preparado_id || null,
-        cantidad: Number(i.cantidad)
-      }));
-
-      const { data } = await api.post('/pedidos', {
-        mesa_id: Number(pedido.mesa_id),
-        detalles
-      });
-
-      return data;
-
-    } catch (error) {
-      throw new Error(error.response?.data?.error || error.message);
+crear: async (pedido) => {
+  try {
+    if (!pedido.mesa_id) {
+      throw new Error('Debe seleccionar una mesa');
     }
-  },
 
+    if (!Array.isArray(pedido.detalles) || pedido.detalles.length === 0) {
+      throw new Error('El pedido debe tener al menos un item');
+    }
+
+    const detalles = pedido.detalles.map(i => ({
+      producto_id: i.producto_id || null,
+      cantidad: Number(i.cantidad),
+      notas: i.notas ?? '',
+      precio: Number(i.precio)
+    }));
+
+    const { data } = await api.post('/pedidos', {
+      mesa_id: Number(pedido.mesa_id),
+      usuario_id: pedido.usuario_id || null,
+      detalles
+    });
+
+    return data;
+
+  } catch (error) {
+    throw new Error(error.response?.data?.error || error.message);
+  }
+},
   // =========================
   // EDITAR PEDIDO 🔥🔥🔥
   // =========================
-  actualizar: async (id, pedido) => {
-    try {
-
-      if (!Array.isArray(pedido.detalles) || pedido.detalles.length === 0) {
-        throw new Error('El pedido debe tener items');
-      }
-
-      const detalles = pedido.detalles.map(i => ({
-        producto_id: i.producto_id || null,
-        producto_preparado_id: i.producto_preparado_id || null,
-        cantidad: Number(i.cantidad)
-      }));
-
-      const { data } = await api.put(`/pedidos/${Number(id)}`, {
-        mesa_id: Number(pedido.mesa_id),
-        detalles
-      });
-
-      return data;
-
-    } catch (error) {
-      throw new Error(error.response?.data?.error || error.message);
+actualizar: async (id, pedido) => {
+  try {
+    if (!Array.isArray(pedido.detalles) || pedido.detalles.length === 0) {
+      throw new Error('El pedido debe tener items');
     }
-  },
+
+    const detalles = pedido.detalles.map(i => ({
+      producto_id: i.producto_id || null,
+      cantidad: Number(i.cantidad),
+      notas: i.notas ?? '',
+      precio: Number(i.precio)
+    }));
+
+    const { data } = await api.put(`/pedidos/${Number(id)}`, {
+      mesa_id: Number(pedido.mesa_id),
+      usuario_id: pedido.usuario_id || null,
+      detalles
+    });
+
+    return data;
+
+  } catch (error) {
+    throw new Error(error.response?.data?.error || error.message);
+  }
+},
 
   // =========================
   // ELIMINAR PEDIDO 🔥🔥🔥
