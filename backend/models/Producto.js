@@ -12,93 +12,167 @@ class Producto {
     return result.rows[0];
   }
 
-  static async crear(producto) {
-    const {
-      nombre,
-      descripcion,
-      precio,
-      categoria,
-      tipo_inventario,
-      producto_preparado_id,
-      receta = []
-    } = producto;
+ static async crear(producto) {
+  const {
+    nombre,
+    descripcion,
+    precio,
+    categoria,
+    tipo_inventario = 'general',
+    producto_preparado_id,
+    receta = []
+  } = producto;
 
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
+  const client = await pool.connect();
 
-      const result = await client.query(
-        `INSERT INTO productos (nombre, descripcion, precio, categoria, tipo_inventario, producto_preparado_id)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING *`,
-        [nombre, descripcion, precio, categoria, tipo_inventario || 'general', producto_preparado_id || null]
-      );
+  try {
+    await client.query('BEGIN');
 
-      const nuevoProducto = result.rows[0];
-
-      // 🔹 Si es de tipo 'general' y trae receta, la registramos
-      if (tipo_inventario === 'general' && receta.length > 0) {
-        for (const item of receta) {
-          await client.query(
-            `INSERT INTO recetas (producto_preparado_id, ingrediente_id, cantidad)
-             VALUES ($1, $2, $3)`,
-            [nuevoProducto.id, item.ingrediente_id, item.cantidad]
-          );
-        }
-      }
-
-      await client.query('COMMIT');
-      return nuevoProducto;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
+    if (!nombre || !nombre.trim()) {
+      throw new Error('Nombre inválido');
     }
+
+    if (!precio || Number(precio) <= 0) {
+      throw new Error('Precio inválido');
+    }
+
+    if (!categoria) {
+      throw new Error('Categoría requerida');
+    }
+
+    if (tipo_inventario === 'preparado' && !producto_preparado_id) {
+      throw new Error('Debes seleccionar un producto preparado asociado');
+    }
+
+    const productoPreparadoIdFinal =
+      tipo_inventario === 'preparado' ? Number(producto_preparado_id) : null;
+
+    const result = await client.query(
+      `INSERT INTO productos
+       (nombre, descripcion, precio, categoria, tipo_inventario, producto_preparado_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        nombre.trim(),
+        descripcion,
+        Number(precio),
+        categoria,
+        tipo_inventario,
+        productoPreparadoIdFinal
+      ]
+    );
+
+    const nuevoProducto = result.rows[0];
+
+    if (tipo_inventario === 'general' && receta.length > 0) {
+      for (const item of receta) {
+        await client.query(
+          `INSERT INTO recetas (producto_id, ingrediente_id, cantidad)
+           VALUES ($1, $2, $3)`,
+          [nuevoProducto.id, item.ingrediente_id, item.cantidad]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    return nuevoProducto;
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
+}
 
   static async actualizar(id, producto) {
-    const { nombre, descripcion, precio, categoria, tipo_inventario, producto_preparado_id, receta = [] } = producto;
+  const {
+    nombre,
+    descripcion,
+    precio,
+    categoria,
+    tipo_inventario = 'general',
+    producto_preparado_id,
+    receta = []
+  } = producto;
 
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
+  const client = await pool.connect();
 
-      const result = await client.query(
-        `UPDATE productos
-         SET nombre = $1, descripcion = $2, precio = $3, categoria = $4,
-             tipo_inventario = $5, producto_preparado_id = $6
-         WHERE id = $7 RETURNING *`,
-        [nombre, descripcion, precio, categoria, tipo_inventario, producto_preparado_id || null, id]
-      );
+  try {
+    await client.query('BEGIN');
 
-      const productoActualizado = result.rows[0];
-
-      // 🔹 Si tiene receta, la actualizamos (borramos y reinsertamos)
-      if (tipo_inventario === 'general') {
-        await client.query('DELETE FROM recetas WHERE producto_preparado_id = $1', [id]);
-        for (const item of receta) {
-          await client.query(
-            `INSERT INTO recetas (producto_preparado_id, ingrediente_id, cantidad)
-             VALUES ($1, $2, $3)`,
-            [id, item.ingrediente_id, item.cantidad]
-          );
-        }
-      }
-
-      await client.query('COMMIT');
-      return productoActualizado;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
+    if (!nombre || !nombre.trim()) {
+      throw new Error('Nombre inválido');
     }
+
+    if (!precio || Number(precio) <= 0) {
+      throw new Error('Precio inválido');
+    }
+
+    if (!categoria) {
+      throw new Error('Categoría requerida');
+    }
+
+    if (tipo_inventario === 'preparado' && !producto_preparado_id) {
+      throw new Error('Debes seleccionar un producto preparado asociado');
+    }
+
+    const productoPreparadoIdFinal =
+      tipo_inventario === 'preparado' ? Number(producto_preparado_id) : null;
+
+    const result = await client.query(
+      `UPDATE productos
+       SET nombre = $1,
+           descripcion = $2,
+           precio = $3,
+           categoria = $4,
+           tipo_inventario = $5,
+           producto_preparado_id = $6
+       WHERE id = $7
+       RETURNING *`,
+      [
+        nombre.trim(),
+        descripcion,
+        Number(precio),
+        categoria,
+        tipo_inventario,
+        productoPreparadoIdFinal,
+        id
+      ]
+    );
+
+    const productoActualizado = result.rows[0];
+
+    if (!productoActualizado) {
+      throw new Error('Producto no encontrado');
+    }
+
+    await client.query('DELETE FROM recetas WHERE producto_id = $1', [id]);
+
+    if (tipo_inventario === 'general' && receta.length > 0) {
+      for (const item of receta) {
+        await client.query(
+          `INSERT INTO recetas (producto_id, ingrediente_id, cantidad)
+           VALUES ($1, $2, $3)`,
+          [id, item.ingrediente_id, item.cantidad]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    return productoActualizado;
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
+}
 
 static async eliminar(id) {
   const uso = await pool.query(
-    'SELECT 1 FROM pedido_detalles WHERE producto_id=$1 LIMIT 1',
+    'SELECT 1 FROM detalles_pedido WHERE producto_id = $1 LIMIT 1',
     [id]
   );
 
@@ -107,7 +181,7 @@ static async eliminar(id) {
   }
 
   const result = await pool.query(
-    'DELETE FROM productos WHERE id=$1 RETURNING *',
+    'DELETE FROM productos WHERE id = $1 RETURNING *',
     [id]
   );
 

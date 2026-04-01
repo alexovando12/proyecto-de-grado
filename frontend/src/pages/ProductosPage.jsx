@@ -124,46 +124,53 @@ const cargarProductosPreparados = async () => {
   // =======================
   // CRUD funciones
   // =======================
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-const productoData = {
-  nombre: formData.nombre,
-  descripcion: formData.descripcion,
-  precio: parseFloat(formData.precio),
-  categoria: formData.categoria,
-  tipo_inventario: formData.tipo_inventario,
-  receta: formData.tipo_inventario === 'general' ? receta : []
-};
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-
-// Por ahora no mandamos 'receta' al backend hasta que tenga la lógica lista
-
-
-
-      if (editingProducto) {
-        await productoService.actualizar(editingProducto.id, productoData);
-        setEditingProducto(null);
-      } else {
-        await productoService.crear(productoData);
-      }
-
-      // reset
-      setFormData({
-        nombre: '',
-        descripcion: '',
-        precio: '',
-        categoria: 'plato',
-        tipo_inventario: 'general',
-        producto_preparado_id: null
-      });
-      setReceta([]);
-      setShowForm(false);
-      cargarProductos();
-    } catch (error) {
-      console.error('Error al guardar producto:', error);
+  try {
+    if (formData.tipo_inventario === 'preparado' && !formData.producto_preparado_id) {
+      alert('Debes seleccionar un producto preparado asociado');
+      return;
     }
-  };
+
+    const productoData = {
+      nombre: formData.nombre.trim(),
+      descripcion: formData.descripcion,
+      precio: parseFloat(formData.precio),
+      categoria: formData.categoria,
+      tipo_inventario: formData.tipo_inventario,
+      producto_preparado_id:
+        formData.tipo_inventario === 'preparado'
+          ? Number(formData.producto_preparado_id)
+          : null,
+      receta: formData.tipo_inventario === 'general' ? receta : []
+    };
+
+    if (editingProducto) {
+      await productoService.actualizar(editingProducto.id, productoData);
+      setEditingProducto(null);
+    } else {
+      await productoService.crear(productoData);
+    }
+
+    setFormData({
+      nombre: '',
+      descripcion: '',
+      precio: '',
+      categoria: 'plato',
+      tipo_inventario: 'general',
+      producto_preparado_id: null
+    });
+
+    setReceta([]);
+    setShowForm(false);
+    cargarProductos();
+
+  } catch (error) {
+    console.error('Error al guardar producto:', error);
+    alert(error?.response?.data?.error || error.message || 'Error al guardar producto');
+  }
+};
 
   const handleEdit = (producto) => {
     setEditingProducto(producto);
@@ -288,10 +295,17 @@ const productoData = {
                   <select
                     className="producto-form-select"
                     value={formData.tipo_inventario}
-                    onChange={(e) => {
-                      setFormData({ ...formData, tipo_inventario: e.target.value });
-                      setReceta([]);
-                    }}
+onChange={(e) => {
+  const nuevoTipo = e.target.value;
+
+  setFormData({
+    ...formData,
+    tipo_inventario: nuevoTipo,
+    producto_preparado_id: nuevoTipo === 'preparado' ? formData.producto_preparado_id : null
+  });
+
+  setReceta([]);
+}}
                     required
                   >
                     {tiposInventario.map(tipo => (
@@ -309,9 +323,12 @@ const productoData = {
                     <select
                       className="producto-form-select"
                       value={formData.producto_preparado_id || ''}
-                      onChange={(e) =>
-                        setFormData({ ...formData, producto_preparado_id: e.target.value })
-                      }
+onChange={(e) =>
+  setFormData({
+    ...formData,
+    producto_preparado_id: e.target.value ? Number(e.target.value) : null
+  })
+}
                     >
                       <option value="">-- Selecciona un producto preparado --</option>
                       {productosPreparados.map((p) => (
