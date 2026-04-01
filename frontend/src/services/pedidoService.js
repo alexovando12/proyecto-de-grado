@@ -103,6 +103,25 @@ export const pedidoService = {
       throw new Error(error.response?.data?.error || error.message);
     }
   },
+  obtenerPorEstado: async (estado) => {
+  try {
+    const { data } = await api.get(`/pedidos/estado/${estado}`);
+    return data;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || error.message);
+  }
+},
+
+editarDetalles: async (id, detalles) => {
+  try {
+    const { data } = await api.put(`/pedidos/${Number(id)}/detalles`, {
+      detalles
+    });
+    return data;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || error.message);
+  }
+},
 
 obtenerPorMesa: async (mesaId) => {
   try {

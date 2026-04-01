@@ -47,37 +47,34 @@ const MesasPage = () => {
     }
   };
 
-  const cargarMesas = async () => {
-    setLoading(true);
-    try {
-      const base = await mesaService.obtenerTodas();
-      const lista = (Array.isArray(base) ? base : []).map(m => ({
-        ...m,
-        id: m?.id,
-        numero: m?.numero ?? m?.id ?? '-',
-        estado: m?.estado ?? 'disponible',
-      }));
+const cargarMesas = async () => {
+  setLoading(true);
+  try {
+    const base = await mesaService.obtenerTodas();
+    const lista = (Array.isArray(base) ? base : []).map(m => ({
+      ...m,
+      id: m?.id,
+      numero: m?.numero ?? m?.id ?? '-',
+      estado: m?.estado ?? 'disponible',
+    }));
 
-      // Traemos pedidos de todas las mesas en paralelo
-const enriquecidas = lista.map((m) => {
-  const pedidosDeMesa = (todosLosPedidos || []).filter(
-    p => Number(p.mesa_id) === Number(m.id)
-  );
+    const pedidosPorMesa = await Promise.all(
+      lista.map((m) => obtenerPedidosDeMesa(m.id))
+    );
 
-  return {
-    ...m,
-    estado: infiereEstadoMesa(m, pedidosDeMesa),
-  };
-});
+    const enriquecidas = lista.map((m, i) => ({
+      ...m,
+      estado: infiereEstadoMesa(m, pedidosPorMesa[i]),
+    }));
 
-      setMesas(enriquecidas);
-    } catch (error) {
-      console.error('Error al cargar mesas:', error);
-      setMesas([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setMesas(enriquecidas);
+  } catch (error) {
+    console.error('Error al cargar mesas:', error);
+    setMesas([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSubmit = async (e) => {
     e.preventDefault();

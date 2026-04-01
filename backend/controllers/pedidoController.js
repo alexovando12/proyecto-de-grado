@@ -141,9 +141,11 @@ exports.obtenerPedido = async (req, res) => {
 exports.crearPedido = async (req, res) => {
   const client = await pool.connect();
   try {
-    const { mesa_id, usuario_id, items } = req.body;
-const detalles = items;
+const { mesa_id, usuario_id, detalles } = req.body;
 
+if (!Array.isArray(detalles) || detalles.length === 0) {
+  return res.status(400).json({ error: 'El pedido debe tener al menos un detalle' });
+}
     const pedidoExistente = await pool.query(
       `SELECT * FROM pedidos 
        WHERE mesa_id = $1 

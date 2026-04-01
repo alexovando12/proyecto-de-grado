@@ -117,7 +117,7 @@ const liberarMesa = async (id) => {
 
     if (!confirmacion) return;
 
-    await pedidoService.actualizarEstado(Number(id), 'cerrado');
+    await pedidoService.actualizarEstado(Number(id), 'entregado');
 
     alert('Mesa liberada correctamente');
 
