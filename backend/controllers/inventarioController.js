@@ -268,12 +268,157 @@ exports.crearProductoPreparado = async (req, res) => {
 
 
 exports.actualizarProductoPreparado = async (req, res) => {
+  const client = await pool.connect();
+
   try {
+    await client.query('BEGIN');
+
     const { id } = req.params;
-    const producto = await ProductoPreparado.actualizar(id, req.body);
-    res.json(producto);
+    const {
+      nombre,
+      descripcion,
+      unidad,
+      stock_actual,
+      stock_minimo,
+      ingredientes = []
+    } = req.body;
+
+    // 1. Obtener receta actual
+    const recetaActualResult = await client.query(
+      `SELECT ingrediente_id, cantidad
+       FROM recetas
+       WHERE producto_preparado_id = $1`,
+      [id]
+    );
+
+    const recetaActual = recetaActualResult.rows;
+
+    const actualMap = new Map(
+      recetaActual.map(r => [Number(r.ingrediente_id), Number(r.cantidad)])
+    );
+
+    const nuevaMap = new Map(
+      ingredientes.map(r => [Number(r.ingrediente_id), Number(r.cantidad)])
+    );
+
+    // 2. Devolver diferencias al stock cuando se redujo o eliminó
+    for (const [ingredienteId, cantidadActual] of actualMap.entries()) {
+      const cantidadNueva = nuevaMap.get(ingredienteId);
+
+      if (cantidadNueva == null) {
+        await client.query(
+          `UPDATE ingredientes
+           SET stock_actual = stock_actual + $1
+           WHERE id = $2`,
+          [cantidadActual, ingredienteId]
+        );
+      } else if (cantidadNueva < cantidadActual) {
+        const diferencia = cantidadActual - cantidadNueva;
+        await client.query(
+          `UPDATE ingredientes
+           SET stock_actual = stock_actual + $1
+           WHERE id = $2`,
+          [diferencia, ingredienteId]
+        );
+      }
+    }
+
+    // 3. Descontar diferencias cuando aumentó o es nuevo
+    for (const [ingredienteId, cantidadNueva] of nuevaMap.entries()) {
+      const cantidadActual = actualMap.get(ingredienteId);
+
+      if (cantidadActual == null) {
+        const stockRes = await client.query(
+          'SELECT stock_actual, nombre, unidad FROM ingredientes WHERE id = $1',
+          [ingredienteId]
+        );
+
+        if (stockRes.rowCount === 0) {
+          throw new Error(`Ingrediente ${ingredienteId} no existe`);
+        }
+
+        const disponible = Number(stockRes.rows[0].stock_actual);
+        if (disponible < cantidadNueva) {
+          throw new Error(`Stock insuficiente de ${stockRes.rows[0].nombre}`);
+        }
+
+        await client.query(
+          `UPDATE ingredientes
+           SET stock_actual = stock_actual - $1
+           WHERE id = $2`,
+          [cantidadNueva, ingredienteId]
+        );
+      } else if (cantidadNueva > cantidadActual) {
+        const diferencia = cantidadNueva - cantidadActual;
+
+        const stockRes = await client.query(
+          'SELECT stock_actual, nombre, unidad FROM ingredientes WHERE id = $1',
+          [ingredienteId]
+        );
+
+        if (stockRes.rowCount === 0) {
+          throw new Error(`Ingrediente ${ingredienteId} no existe`);
+        }
+
+        const disponible = Number(stockRes.rows[0].stock_actual);
+        if (disponible < diferencia) {
+          throw new Error(`Stock insuficiente de ${stockRes.rows[0].nombre}`);
+        }
+
+        await client.query(
+          `UPDATE ingredientes
+           SET stock_actual = stock_actual - $1
+           WHERE id = $2`,
+          [diferencia, ingredienteId]
+        );
+      }
+    }
+
+    // 4. Actualizar producto preparado
+    const productoResult = await client.query(
+      `UPDATE productos_preparados
+       SET nombre = $1,
+           descripcion = $2,
+           unidad = $3,
+           stock_actual = $4,
+           stock_minimo = $5
+       WHERE id = $6
+       RETURNING *`,
+      [nombre, descripcion, unidad, stock_actual, stock_minimo, id]
+    );
+
+    if (productoResult.rowCount === 0) {
+      throw new Error('Producto preparado no encontrado');
+    }
+
+    // 5. Reemplazar receta
+    await client.query(
+      `DELETE FROM recetas WHERE producto_preparado_id = $1`,
+      [id]
+    );
+
+    for (const item of ingredientes) {
+      await client.query(
+        `INSERT INTO recetas (producto_preparado_id, ingrediente_id, cantidad)
+         VALUES ($1, $2, $3)`,
+        [id, item.ingrediente_id, item.cantidad]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: 'Producto preparado actualizado correctamente',
+      producto: productoResult.rows[0]
+    });
+
   } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Error al actualizar producto preparado:', error);
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 };
 

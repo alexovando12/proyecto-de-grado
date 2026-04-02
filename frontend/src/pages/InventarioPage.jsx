@@ -268,7 +268,6 @@ const handleSubmitProducto = async (e) => {
     setLoading(true);
     setError(null);
 
-    // 🔹 Construir correctamente el objeto a enviar
     const productoData = {
       ...productoForm,
       ingredientes: recetaItems.map(item => ({
@@ -279,11 +278,14 @@ const handleSubmitProducto = async (e) => {
 
     console.log("📦 Enviando producto preparado:", productoData);
 
-    // 🟢 Crear el producto en backend
-    const response = await productosPreparadosService.crearProductoPreparado(productoData);
-    console.log("✅ Respuesta del backend:", response);
+    if (editingProducto) {
+      await productosPreparadosService.actualizarProductoPreparado(editingProducto.id, productoData);
+      alert("✅ Producto preparado actualizado correctamente");
+    } else {
+      await productosPreparadosService.crearProductoPreparado(productoData);
+      alert("✅ Producto preparado creado correctamente");
+    }
 
-    alert("✅ Producto preparado creado correctamente");
     resetProductoForm();
     await cargarProductosPreparados();
     await cargarAlertas();
