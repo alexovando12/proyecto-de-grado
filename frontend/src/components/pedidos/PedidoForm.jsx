@@ -22,7 +22,8 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada, pedidoExistente }) => {
   const [items, setItems] = useState([]);
   const [notas, setNotas] = useState('');
   const [loading, setLoading] = useState(false);
-
+  const [searchProducto, setSearchProducto] = useState('');
+  const [categoriaActiva, setCategoriaActiva] = useState('todos');
   useEffect(() => {
     setSelectedMesa(mesaSeleccionada ? String(mesaSeleccionada) : '');
   }, [mesaSeleccionada]);
@@ -151,7 +152,23 @@ useEffect(() => {
       setProductos([]);
     }
   };
+const productosFiltrados = productos.filter((producto) => {
+  const coincideBusqueda =
+    producto.nombre.toLowerCase().includes(searchProducto.toLowerCase()) ||
+    (producto.descripcion || '').toLowerCase().includes(searchProducto.toLowerCase());
 
+  const coincideCategoria =
+    categoriaActiva === 'todos' || producto.categoria === categoriaActiva;
+
+  return coincideBusqueda && coincideCategoria;
+});
+
+const productosPorCategoria = {
+  plato: productosFiltrados.filter(p => p.categoria === 'plato'),
+  bebida: productosFiltrados.filter(p => p.categoria === 'bebida'),
+  postre: productosFiltrados.filter(p => p.categoria === 'postre'),
+  entrada: productosFiltrados.filter(p => p.categoria === 'entrada'),
+};
   const agregarItem = (producto) => {
     const existingItem = items.find(item => item.producto_id === producto.id);
     const precioNum = typeof producto.precio === 'number' ? producto.precio : parseFloat(producto.precio ?? 0);
@@ -349,29 +366,95 @@ response = await pedidoService.editarDetalles(pedidoExistente.id, detallesNormal
         </select>
       </div>
 
-      <div className="pedido-form-section">
-        <h4 className="pedido-form-subtitle">Productos</h4>
-        <div className="productos-grid">
-          {productos.map(producto => (
-            <div
-              key={producto.id}
-              className="producto-card"
-              onClick={() => agregarItem(producto)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => (e.key === 'Enter' ? agregarItem(producto) : null)}
-            >
-              <div className="producto-info">
-                <h5 className="producto-nombre">{producto.nombre}</h5>
-                <p className="producto-precio">{toMoney(producto.precio)}</p>
+<div className="pedido-form-section">
+  <h4 className="pedido-form-subtitle">Productos</h4>
+
+  <div className="pedido-productos-toolbar">
+    <input
+      type="text"
+      className="form-control"
+      placeholder="Buscar plato, bebida o postre..."
+      value={searchProducto}
+      onChange={(e) => setSearchProducto(e.target.value)}
+    />
+
+    <div className="pedido-categorias-tabs">
+      <button
+        type="button"
+        className={`btn btn-sm ${categoriaActiva === 'todos' ? 'btn-primary' : 'btn-secondary'}`}
+        onClick={() => setCategoriaActiva('todos')}
+      >
+        Todos
+      </button>
+      <button
+        type="button"
+        className={`btn btn-sm ${categoriaActiva === 'plato' ? 'btn-primary' : 'btn-secondary'}`}
+        onClick={() => setCategoriaActiva('plato')}
+      >
+        Platos
+      </button>
+      <button
+        type="button"
+        className={`btn btn-sm ${categoriaActiva === 'bebida' ? 'btn-primary' : 'btn-secondary'}`}
+        onClick={() => setCategoriaActiva('bebida')}
+      >
+        Bebidas
+      </button>
+      <button
+        type="button"
+        className={`btn btn-sm ${categoriaActiva === 'postre' ? 'btn-primary' : 'btn-secondary'}`}
+        onClick={() => setCategoriaActiva('postre')}
+      >
+        Postres
+      </button>
+      <button
+        type="button"
+        className={`btn btn-sm ${categoriaActiva === 'entrada' ? 'btn-primary' : 'btn-secondary'}`}
+        onClick={() => setCategoriaActiva('entrada')}
+      >
+        Entradas
+      </button>
+    </div>
+  </div>
+
+  {[
+    { key: 'plato', label: '🍽️ Platos', data: productosPorCategoria.plato },
+    { key: 'bebida', label: '🥤 Bebidas', data: productosPorCategoria.bebida },
+    { key: 'postre', label: '🍰 Postres', data: productosPorCategoria.postre },
+    { key: 'entrada', label: '🥗 Entradas', data: productosPorCategoria.entrada },
+  ]
+    .filter(section => categoriaActiva === 'todos' || categoriaActiva === section.key)
+    .map(section => (
+      <div key={section.key} className="pedido-categoria-section">
+        <h5 className="pedido-categoria-title">{section.label}</h5>
+
+        {section.data.length === 0 ? (
+          <p className="pedido-categoria-empty">No hay productos en esta sección.</p>
+        ) : (
+          <div className="productos-grid">
+            {section.data.map(producto => (
+              <div
+                key={producto.id}
+                className="producto-card"
+                onClick={() => agregarItem(producto)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => (e.key === 'Enter' ? agregarItem(producto) : null)}
+              >
+                <div className="producto-info">
+                  <h5 className="producto-nombre">{producto.nombre}</h5>
+                  <p className="producto-precio">{toMoney(producto.precio)}</p>
+                </div>
+                <div className="producto-descripcion">
+                  {producto.descripcion}
+                </div>
               </div>
-              <div className="producto-descripcion">
-                {producto.descripcion}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
+    ))}
+</div>
 
       {items.length > 0 && (
         <div className="pedido-form-section">

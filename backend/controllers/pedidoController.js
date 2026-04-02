@@ -223,7 +223,7 @@ exports.eliminarPedido = async (req, res) => {
   try {
     const { id } = req.params;
     await Pedido.eliminar(id);
-    if (req.io) req.io.emit('pedidoEliminado', { id: Number(id) });
+    if (req.io) req.io.emit('pedidoActualizado', pedido);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });

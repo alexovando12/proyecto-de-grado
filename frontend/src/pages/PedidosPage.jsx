@@ -47,32 +47,49 @@ const PedidosPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [selectedMesa, setSelectedMesa] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState('');
-
+  const [searchPedido, setSearchPedido] = useState('');
   // 🔥 Modal para edición
   const [showEditForm, setShowEditForm] = useState(false);
   const [pedidoEditando, setPedidoEditando] = useState(null);
 
-  useEffect(() => {
-    cargarPedidos();
+useEffect(() => {
+  cargarPedidos();
 
-    socket.on("pedidoCreado", (pedido) => {
-      setPedidos(prev => [normalizePedido(pedido), ...prev]);
+  socket.on("pedidoCreado", (pedido) => {
+    setPedidos(prev => {
+      const existe = prev.some(p => p.id === pedido.id);
+      if (existe) return prev;
+      return [normalizePedido(pedido), ...prev];
+    });
+  });
+
+  socket.on("pedidoActualizado", (pedido) => {
+    setPedidos(prev => {
+      const existe = prev.some(p => p.id === pedido.id);
+
+      if (existe) {
+        return prev.map(p =>
+          p.id === pedido.id ? normalizePedido(pedido) : p
+        );
+      }
+
+      return [normalizePedido(pedido), ...prev];
     });
 
-    socket.on("pedidoActualizado", (pedido) => {
-      setPedidos(prev => prev.map(p => p.id === pedido.id ? normalizePedido(pedido) : p));
-    });
+    window.dispatchEvent(new Event('mesa-status-changed'));
+  });
 
-    socket.on("pedidoEliminado", ({ id }) => {
-      setPedidos(prev => prev.filter(p => p.id !== id));
-    });
+  socket.on("pedidoEliminado", ({ id }) => {
+    setPedidos(prev => prev.filter(p => p.id !== id));
+    window.dispatchEvent(new Event('mesa-status-changed'));
+  });
 
-    return () => {
-      socket.off("pedidoCreado");
-      socket.off("pedidoActualizado");
-      socket.off("pedidoEliminado");
-    };
-  }, [filtroEstado]);
+  return () => {
+    socket.off("pedidoCreado");
+    socket.off("pedidoActualizado");
+    socket.off("pedidoEliminado");
+  };
+}, []);
 
   const cargarPedidos = async () => {
     try {
@@ -117,7 +134,6 @@ const liberarMesa = async (id) => {
 
     alert('Pedido cerrado y mesa liberada correctamente');
 
-    await cargarPedidos();
     window.dispatchEvent(new Event('mesa-status-changed'));
 
   } catch (error) {
@@ -144,7 +160,19 @@ const liberarMesa = async (id) => {
       default:            return estado || '—';
     }
   };
+const pedidosFiltrados = pedidos.filter((pedido) => {
+  const texto = searchPedido.toLowerCase();
 
+  const coincideNumero = String(pedido.id).includes(texto);
+
+  const coincideProducto = (pedido.detalles || []).some((detalle) =>
+    (detalle.producto_nombre || '').toLowerCase().includes(texto)
+  );
+
+  const coincideEstado = !filtroEstado || pedido.estado === filtroEstado;
+
+  return (coincideNumero || coincideProducto || !texto) && coincideEstado;
+});
   if (loading) return <div>Cargando...</div>;
 
   return (
@@ -191,6 +219,13 @@ const liberarMesa = async (id) => {
           <div className="pedidos-filters">
             <div className="pedidos-filters-group">
               <label className="form-label">Filtrar por estado:</label>
+              <input
+  type="text"
+  className="form-control"
+  placeholder="Buscar por número o nombre del producto..."
+  value={searchPedido}
+  onChange={(e) => setSearchPedido(e.target.value)}
+/>
               <select
                 className="form-control"
                 value={filtroEstado}
@@ -214,7 +249,7 @@ const liberarMesa = async (id) => {
           </div>
 
           <div className="pedidos-grid">
-            {pedidos.map((pedido) => (
+{pedidosFiltrados.map((pedido) => (
               <div key={pedido.id} className="pedido-card">
                 <div className="pedido-card-header">
                   <div className="pedido-card-info">
@@ -250,17 +285,16 @@ const liberarMesa = async (id) => {
                   <div className="pedido-card-total">
                     <strong>Total: {toMoney(pedido.total)}</strong>
                   </div>
-                 <div className="pedido-card-actions">
+<div className="pedido-card-actions">
+  {pedido.estado !== 'cerrado' && (
+    <button
+      className="btn btn-warning btn-sm"
+      onClick={() => editarPedido(pedido)}
+    >
+      Editar
+    </button>
+  )}
 
-  {/* 🔥 Botón Editar SIEMPRE */}
-  <button
-    className="btn btn-warning btn-sm"
-    onClick={() => editarPedido(pedido)}
-  >
-    Editar
-  </button>
-
-  {/* 🔥 Botón Entregar SOLO cuando está listo */}
   {pedido.estado === 'listo' && (
     <button
       className="btn btn-success btn-sm"
@@ -270,16 +304,14 @@ const liberarMesa = async (id) => {
     </button>
   )}
 
-  {/* 🔥 Botón Liberar mesa SIEMPRE */}
-{pedido.estado === 'entregado' && (
-  <button
-    className="btn btn-danger btn-sm"
-    onClick={() => liberarMesa(pedido.id)}
-  >
-    Cerrar Pedido
-  </button>
-)}
-
+  {pedido.estado === 'entregado' && (
+    <button
+      className="btn btn-danger btn-sm"
+      onClick={() => liberarMesa(pedido.id)}
+    >
+      Cerrar Pedido
+    </button>
+  )}
 </div>
 
                 </div>
