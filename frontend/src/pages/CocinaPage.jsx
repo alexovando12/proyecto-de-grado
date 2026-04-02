@@ -5,7 +5,10 @@ import { io } from "socket.io-client";
 
 
 const socket = io(import.meta.env.VITE_API_URL, {
-  transports: ["websocket"],
+  transports: ["polling", "websocket"],
+  reconnection: true,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 1000,
 });
 
 const CocinaPage = () => {
@@ -16,7 +19,13 @@ const CocinaPage = () => {
 
   useEffect(() => {
     cargarPedidos();
+    socket.on("connect", () => {
+  console.log("✅ Socket cocina conectado:", socket.id);
+});
 
+socket.on("disconnect", (reason) => {
+  console.log("❌ Socket cocina desconectado:", reason);
+});
     socket.on("pedidoCreado", (pedido) => {
       if (pedido.estado === filtroEstado || filtroEstado === '') {
         setPedidos(prev => [pedido, ...prev]);
@@ -60,13 +69,26 @@ const CocinaPage = () => {
     }
   };
 
-  const actualizarEstado = async (id, nuevoEstado) => {
-    try {
-      await pedidoService.actualizarEstado(id, nuevoEstado);
-    } catch (error) {
-      console.error('Error al actualizar estado:', error);
-    }
-  };
+const actualizarEstado = async (id, nuevoEstado) => {
+  try {
+    const pedidoActualizado = await pedidoService.actualizarEstado(id, nuevoEstado);
+
+    setPedidos(prev => {
+      const existe = prev.some(p => p.id === pedidoActualizado.id);
+
+      if (pedidoActualizado.estado === filtroEstado || filtroEstado === '') {
+        if (existe) {
+          return prev.map(p => p.id === pedidoActualizado.id ? pedidoActualizado : p);
+        }
+        return [pedidoActualizado, ...prev];
+      }
+
+      return prev.filter(p => p.id !== pedidoActualizado.id);
+    });
+  } catch (error) {
+    console.error('Error al actualizar estado:', error);
+  }
+};
 
   const getEstadoColor = (estado) => {
     switch (estado) {

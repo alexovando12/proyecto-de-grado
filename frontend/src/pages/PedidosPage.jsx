@@ -5,7 +5,10 @@ import PedidoForm from "../components/pedidos/PedidoForm.jsx";
 import { io } from "socket.io-client";
 
 const socket = io(import.meta.env.VITE_API_URL, {
-  transports: ["websocket"],
+  transports: ["polling", "websocket"],
+  reconnection: true,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 1000,
 });
 
 const toNum = (v) => {
@@ -54,7 +57,13 @@ const PedidosPage = () => {
 
 useEffect(() => {
   cargarPedidos();
+  socket.on("connect", () => {
+  console.log("✅ Socket pedidos conectado:", socket.id);
+});
 
+socket.on("disconnect", (reason) => {
+  console.log("❌ Socket pedidos desconectado:", reason);
+});
   socket.on("pedidoCreado", (pedido) => {
     setPedidos(prev => {
       const existe = prev.some(p => p.id === pedido.id);
@@ -110,15 +119,21 @@ useEffect(() => {
     cargarPedidos();
   };
 
-  const actualizarEstadoPedido = async (id, estado) => {
-    try {
-      await pedidoService.actualizarEstado(Number(id), estado);
-    } catch (error) {
-      const msg = error?.response?.data?.message || error?.response?.data || error.message;
-      console.error('Error al actualizar estado:', msg);
-      alert(`No se pudo actualizar el estado: ${msg}`);
-    }
-  };
+const actualizarEstadoPedido = async (id, estado) => {
+  try {
+    const pedidoActualizado = await pedidoService.actualizarEstado(Number(id), estado);
+
+    setPedidos(prev =>
+      prev.map(p =>
+        p.id === pedidoActualizado.id ? normalizePedido(pedidoActualizado) : p
+      )
+    );
+  } catch (error) {
+    const msg = error?.response?.data?.message || error?.response?.data || error.message;
+    console.error('Error al actualizar estado:', msg);
+    alert(`No se pudo actualizar el estado: ${msg}`);
+  }
+};
 
   const editarPedido = (pedido) => {
     setPedidoEditando(pedido);
@@ -130,12 +145,19 @@ const liberarMesa = async (id) => {
     const confirmacion = window.confirm('¿Cerrar pedido y liberar mesa?');
     if (!confirmacion) return;
 
-    await pedidoService.liberarMesa(Number(id));
+    const response = await pedidoService.liberarMesa(Number(id));
+    const pedidoCerrado = response?.pedido;
 
-    alert('Pedido cerrado y mesa liberada correctamente');
+    if (pedidoCerrado) {
+      setPedidos(prev =>
+        prev.map(p =>
+          p.id === pedidoCerrado.id ? normalizePedido(pedidoCerrado) : p
+        )
+      );
+    }
 
     window.dispatchEvent(new Event('mesa-status-changed'));
-
+    alert('Pedido cerrado y mesa liberada correctamente');
   } catch (error) {
     alert(error.message);
   }

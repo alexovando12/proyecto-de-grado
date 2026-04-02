@@ -223,7 +223,7 @@ exports.eliminarPedido = async (req, res) => {
   try {
     const { id } = req.params;
     await Pedido.eliminar(id);
-    if (req.io) req.io.emit('pedidoActualizado', pedido);
+    if (req.io) req.io.emit('pedidoEliminado', { id: Number(id) });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -420,17 +420,14 @@ exports.liberarMesa = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const pedido = await Pedido.actualizar(id, { estado: 'cerrado' });
+    await Pedido.actualizar(id, { estado: 'cerrado' });
+    const pedidoCompleto = await Pedido.obtenerPorIdConDetalles(id);
 
-    if (!pedido) {
-      return res.status(404).json({ error: 'Pedido no encontrado' });
-    }
+    if (req.io) req.io.emit('pedidoActualizado', pedidoCompleto);
 
-    if (req.io) req.io.emit('pedidoActualizado', pedido);
-
-    res.json({ success: true, pedido });
+    res.json({ success: true, pedido: pedidoCompleto });
   } catch (error) {
-    console.error('❌ Error al liberar mesa:', error);
+    console.error('❌ Error en liberarMesa:', error);
     res.status(500).json({ error: error.message });
   }
 };
