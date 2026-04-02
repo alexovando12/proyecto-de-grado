@@ -122,7 +122,14 @@ editarDetalles: async (id, detalles) => {
     throw new Error(error.response?.data?.error || error.message);
   }
 },
-
+liberarMesa: async (id) => {
+  try {
+    const { data } = await api.put(`/pedidos/${Number(id)}/liberar`);
+    return data;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || error.message);
+  }
+},
 obtenerPorMesa: async (mesaId) => {
   try {
     const { data } = await api.get(`/pedidos/mesa/${Number(mesaId)}`);

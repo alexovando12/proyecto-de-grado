@@ -419,10 +419,18 @@ exports.editarPedido = async (req, res) => {
 exports.liberarMesa = async (req, res) => {
   try {
     const { id } = req.params;
+
     const pedido = await Pedido.actualizar(id, { estado: 'cerrado' });
-    if (req.io) req.io.emit('pedidoEliminado', { id: Number(id) });
+
+    if (!pedido) {
+      return res.status(404).json({ error: 'Pedido no encontrado' });
+    }
+
+    if (req.io) req.io.emit('pedidoActualizado', pedido);
+
     res.json({ success: true, pedido });
   } catch (error) {
+    console.error('❌ Error al liberar mesa:', error);
     res.status(500).json({ error: error.message });
   }
 };

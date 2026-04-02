@@ -110,16 +110,12 @@ const PedidosPage = () => {
 
 const liberarMesa = async (id) => {
   try {
-
-    const confirmacion = window.confirm(
-      '¿Cerrar pedido y liberar mesa?'
-    );
-
+    const confirmacion = window.confirm('¿Cerrar pedido y liberar mesa?');
     if (!confirmacion) return;
 
-    await pedidoService.actualizarEstado(Number(id), 'entregado');
+    await pedidoService.liberarMesa(Number(id));
 
-    alert('Mesa liberada correctamente');
+    alert('Pedido cerrado y mesa liberada correctamente');
 
     await cargarPedidos();
     window.dispatchEvent(new Event('mesa-status-changed'));
