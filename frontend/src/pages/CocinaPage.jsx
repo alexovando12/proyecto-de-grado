@@ -1,100 +1,149 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext.jsx';
-import { pedidoService } from '../services/pedidoService.js';
+import React, { useState, useEffect } from "react";
+import { pedidoService } from "../services/pedidoService.js";
 import { io } from "socket.io-client";
+import { BACKEND_BASE_URL } from "../config/backend.js";
 
-
-const socket = io(import.meta.env.VITE_API_URL, {
+const socket = io(BACKEND_BASE_URL, {
   transports: ["polling", "websocket"],
   reconnection: true,
   reconnectionAttempts: 10,
   reconnectionDelay: 1000,
 });
 
+const getTodayBoliviaDate = () =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/La_Paz",
+  }).format(new Date());
+
 const CocinaPage = () => {
-  const { user } = useAuth();
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filtroEstado, setFiltroEstado] = useState('preparando'); // 👈 Directo a "preparando"
+  const [filtroEstado, setFiltroEstado] = useState("preparando"); // 👈 Directo a "preparando"
+  const [fechaFiltro, setFechaFiltro] = useState(getTodayBoliviaDate());
+
+  const sortByFechaActualizacionAsc = (lista) => {
+    return [...(Array.isArray(lista) ? lista : [])].sort((a, b) => {
+      const fa = new Date(a?.fecha_actualizacion || 0).getTime();
+      const fb = new Date(b?.fecha_actualizacion || 0).getTime();
+      return fa - fb;
+    });
+  };
+
+  const normalizePedido = (pedido) => ({
+    ...pedido,
+    detalles: Array.isArray(pedido?.detalles)
+      ? pedido.detalles.map((d) => ({
+          ...d,
+          estado: d?.estado || "pendiente",
+        }))
+      : [],
+  });
 
   useEffect(() => {
     cargarPedidos();
-    socket.on("connect", () => {
-  console.log("✅ Socket cocina conectado:", socket.id);
-});
 
-socket.on("disconnect", (reason) => {
-  console.log("❌ Socket cocina desconectado:", reason);
-});
-    socket.on("pedidoCreado", (pedido) => {
-      if (pedido.estado === filtroEstado || filtroEstado === '') {
-        setPedidos(prev => [pedido, ...prev]);
-      }
-    });
+    const onConnect = () => {
+      console.log("✅ Socket cocina conectado:", socket.id);
+    };
 
-    socket.on("pedidoActualizado", (pedido) => {
-      setPedidos(prev => {
-        const existe = prev.some(p => p.id === pedido.id);
-        if (pedido.estado === filtroEstado || filtroEstado === '') {
-          if (existe) {
-            return prev.map(p => p.id === pedido.id ? pedido : p);
-          } else {
-            return [pedido, ...prev];
-          }
-        } else {
-          return prev.filter(p => p.id !== pedido.id);
-        }
-      });
-    });
+    const onDisconnect = (reason) => {
+      console.log("❌ Socket cocina desconectado:", reason);
+    };
 
-    socket.on("pedidoEliminado", ({ id }) => {
-      setPedidos(prev => prev.filter(p => p.id !== id));
-    });
+    const onPedidoCreado = () => {
+      cargarPedidos();
+    };
+
+    const onPedidoActualizado = () => {
+      cargarPedidos();
+    };
+
+    const onPedidoEliminado = () => {
+      cargarPedidos();
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("pedidoCreado", onPedidoCreado);
+    socket.on("pedidoActualizado", onPedidoActualizado);
+    socket.on("pedidoEliminado", onPedidoEliminado);
 
     return () => {
-      socket.off("pedidoCreado");
-      socket.off("pedidoActualizado");
-      socket.off("pedidoEliminado");
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("pedidoCreado", onPedidoCreado);
+      socket.off("pedidoActualizado", onPedidoActualizado);
+      socket.off("pedidoEliminado", onPedidoEliminado);
     };
-  }, [filtroEstado]);
+  }, [filtroEstado, fechaFiltro]);
 
   const cargarPedidos = async () => {
     try {
-      const data = await pedidoService.obtenerPorEstado(filtroEstado);
-      setPedidos(data);
+      const data = await pedidoService.obtenerPorEstado(filtroEstado, fechaFiltro);
+      setPedidos(sortByFechaActualizacionAsc(data.map(normalizePedido)));
     } catch (error) {
-      console.error('Error al cargar pedidos:', error);
+      console.error("Error al cargar pedidos:", error);
     } finally {
       setLoading(false);
     }
   };
 
-const actualizarEstado = async (id, nuevoEstado) => {
-  try {
-    const pedidoActualizado = await pedidoService.actualizarEstado(id, nuevoEstado);
+  const actualizarEstado = async (id, nuevoEstado) => {
+    try {
+      const pedidoActualizado = await pedidoService.actualizarEstado(
+        id,
+        nuevoEstado,
+      );
 
-    setPedidos(prev => {
-      const existe = prev.some(p => p.id === pedidoActualizado.id);
+      setPedidos((prev) => {
+        const existe = prev.some((p) => p.id === pedidoActualizado.id);
 
-      if (pedidoActualizado.estado === filtroEstado || filtroEstado === '') {
-        if (existe) {
-          return prev.map(p => p.id === pedidoActualizado.id ? pedidoActualizado : p);
+        if (pedidoActualizado.estado === filtroEstado || filtroEstado === "") {
+          if (existe) {
+            return sortByFechaActualizacionAsc(
+              prev.map((p) =>
+                p.id === pedidoActualizado.id
+                  ? normalizePedido(pedidoActualizado)
+                  : p,
+              ),
+            );
+          }
+          return sortByFechaActualizacionAsc([
+            normalizePedido(pedidoActualizado),
+            ...prev,
+          ]);
         }
-        return [pedidoActualizado, ...prev];
-      }
 
-      return prev.filter(p => p.id !== pedidoActualizado.id);
-    });
-  } catch (error) {
-    console.error('Error al actualizar estado:', error);
-  }
-};
+        return prev.filter((p) => p.id !== pedidoActualizado.id);
+      });
+    } catch (error) {
+      console.error("Error al actualizar estado:", error);
+    }
+  };
 
   const getEstadoColor = (estado) => {
     switch (estado) {
-      case 'preparando': return 'badge-primary';
-      case 'listo': return 'badge-success';
-      default: return 'badge-secondary';
+      case "preparando":
+        return "badge-primary";
+      case "listo":
+        return "badge-success";
+      default:
+        return "badge-secondary";
+    }
+  };
+
+  const getDetalleEstadoClass = (estado) => {
+    const estadoDetalle = String(estado || "").toLowerCase();
+    switch (estadoDetalle) {
+      case "nuevo":
+        return "cocina-detalle-nuevo";
+      case "listo":
+        return "cocina-detalle-listo";
+      case "actualizado":
+      case "modificado":
+        return "cocina-detalle-modificado";
+      default:
+        return "cocina-detalle-pendiente";
     }
   };
 
@@ -102,47 +151,36 @@ const actualizarEstado = async (id, nuevoEstado) => {
 
   return (
     <div className="cocina-container">
-      <header className="cocina-header">
-        <div className="container">
-          <div className="header-content">
-            <div className="header-logo">
-              <h1 className="header-title">Cocina</h1>
-              <p className="header-subtitle">Garden Gates</p>
-            </div>
-            <div className="header-user">
-              <span>Bienvenido, {user?.nombre}</span>
-              <button className="btn btn-secondary" onClick={() => window.location.href = '/dashboard'}>
-                Volver
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
       <main className="cocina-content">
         <div className="container">
           <div className="cocina-controls">
             <h2 className="cocina-title">Pedidos en Cocina</h2>
             <div className="cocina-filtros">
-              <select 
-                value={filtroEstado} 
+              <select
+                value={filtroEstado}
                 onChange={(e) => setFiltroEstado(e.target.value)}
                 className="form-select"
               >
                 <option value="preparando">En Preparación</option>
                 <option value="listo">Listos para Entregar</option>
               </select>
+              <input
+                type="date"
+                className="form-select cocina-fecha-input"
+                value={fechaFiltro}
+                onChange={(e) => setFechaFiltro(e.target.value)}
+              />
             </div>
           </div>
 
           <div className="pedidos-grid">
-            {pedidos.map(pedido => (
+            {pedidos.map((pedido) => (
               <div key={pedido.id} className="pedido-card">
                 <div className="pedido-header">
                   <div>
                     <h3 className="pedido-mesa">Pedido #{pedido.id}</h3>
                     <p className="pedido-mozo">
-                      Mesa {pedido.mesa_numero ?? '—'}
+                      Mesa {pedido.mesa_numero ?? pedido.mesa_id ?? "—"}
                     </p>
                   </div>
                   <span className={`badge ${getEstadoColor(pedido.estado)}`}>
@@ -153,10 +191,14 @@ const actualizarEstado = async (id, nuevoEstado) => {
                 <div className="pedido-items">
                   <h4>Items:</h4>
                   {(pedido.detalles ?? []).map((d, idx) => (
-                    <div key={idx} className="pedido-detalle">
-                      <span>{d.producto_nombre ?? '—'}</span>
+                    <div
+                      key={idx}
+                      className={`pedido-detalle ${getDetalleEstadoClass(d.estado)}`}
+                    >
+                      <span>{d.producto_nombre ?? "—"}</span>
                       <span>x{d.cantidad}</span>
                       <span>{d.precio} Bs</span>
+                      <span className="pedido-detalle-estado">{d.estado}</span>
                       {d.notas && <span>Nota: {d.notas}</span>}
                     </div>
                   ))}
@@ -164,10 +206,10 @@ const actualizarEstado = async (id, nuevoEstado) => {
                 </div>
 
                 <div className="pedido-actions">
-                  {pedido.estado === 'preparando' && (
-                    <button 
+                  {pedido.estado === "preparando" && (
+                    <button
                       className="btn btn-success"
-                      onClick={() => actualizarEstado(pedido.id, 'listo')}
+                      onClick={() => actualizarEstado(pedido.id, "listo")}
                     >
                       Marcar como Listo
                     </button>

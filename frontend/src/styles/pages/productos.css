@@ -29,6 +29,31 @@
   padding: var(--spacing-xl);
 }
 
+.productos-error-container {
+  margin-bottom: var(--spacing-lg);
+}
+
+.productos-error-message {
+  background-color: #fff5f5;
+  color: #c53030;
+  border-left: 4px solid #e53e3e;
+  padding: 14px 16px;
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.productos-error-close {
+  background: transparent;
+  border: none;
+  color: #c53030;
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
 .productos-controls {
   display: flex;
   justify-content: space-between;
@@ -51,7 +76,9 @@
   background-color: var(--color-background);
   color: var(--color-text);
   font-size: var(--font-size-base);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .productos-search-input:focus {
@@ -92,7 +119,9 @@
   border-radius: var(--border-radius-md);
   padding: var(--spacing-lg);
   box-shadow: var(--shadow-sm);
-  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+  transition:
+    transform var(--transition-normal),
+    box-shadow var(--transition-normal);
   position: relative;
   overflow: hidden;
 }
@@ -103,7 +132,7 @@
 }
 
 .producto-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -292,12 +321,12 @@
   .productos-grid {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   }
-  
+
   .productos-controls {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .productos-search {
     min-width: auto;
   }

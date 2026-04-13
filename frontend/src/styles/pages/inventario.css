@@ -24,7 +24,7 @@
 }
 
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background-color: #f0f2f5;
   color: var(--dark-color);
   line-height: 1.6;
@@ -38,7 +38,11 @@ body {
 
 /* Header Styles */
 .inventario-header {
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background: linear-gradient(
+    135deg,
+    var(--primary-color),
+    var(--secondary-color)
+  );
   border-radius: var(--radius);
   padding: 30px;
   margin-bottom: 30px;
@@ -277,7 +281,11 @@ body {
 }
 
 .inventario-tab.active {
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background: linear-gradient(
+    135deg,
+    var(--primary-color),
+    var(--secondary-color)
+  );
   color: white;
   box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
 }
@@ -303,6 +311,33 @@ body {
   padding: 30px;
   margin-bottom: 30px;
   border: 1px solid var(--light-gray);
+}
+
+.inventario-modal-content .ingrediente-form {
+  margin-bottom: 0;
+}
+
+.inventario-modal-content {
+  position: relative;
+}
+
+.inventario-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 999px;
+  font-size: 1.25rem;
+  line-height: 1;
+  background: #f1f3f5;
+  color: #343a40;
+  cursor: pointer;
+}
+
+.inventario-modal-close:hover {
+  background: #dee2e6;
 }
 
 .ingrediente-form-title {
@@ -656,7 +691,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive Design */
@@ -665,20 +702,20 @@ body {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .header-actions {
     width: 100%;
     justify-content: flex-start;
   }
-  
+
   .ingrediente-form-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .receta-item-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .inventario-grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
@@ -688,32 +725,32 @@ body {
   .inventario-title {
     font-size: 2rem;
   }
-  
+
   .inventario-tabs {
     padding: 5px;
   }
-  
+
   .inventario-tab {
     padding: 12px 15px;
     font-size: 0.9rem;
   }
-  
+
   .inventario-content {
     padding: 20px;
   }
-  
+
   .ingrediente-form {
     padding: 20px;
   }
-  
+
   .ingrediente-card {
     padding: 20px;
   }
-  
+
   .movimientos-table {
     font-size: 0.9rem;
   }
-  
+
   .movimientos-table th,
   .movimientos-table td {
     padding: 10px;
@@ -724,32 +761,32 @@ body {
   .inventario-container {
     padding: 15px;
   }
-  
+
   .inventario-header {
     padding: 20px;
   }
-  
+
   .inventario-title {
     font-size: 1.8rem;
   }
-  
+
   .header-actions {
     flex-direction: column;
     width: 100%;
   }
-  
+
   .btn {
     width: 100%;
   }
-  
+
   .inventario-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .stock-alertas-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .table-responsive {
     overflow-x: scroll;
   }

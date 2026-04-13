@@ -1,25 +1,41 @@
-const pool = require('../config/db');
+const pool = require("../config/db");
 
 // 🔥 VENTAS
 exports.generarReporteVentas = async (req, res) => {
   try {
-    const result = await pool.query(`
+    const { fechaInicio, fechaFin } = req.query;
+    const params = [];
+    const where = ["p.estado IN ('entregado', 'cerrado')"];
+
+    if (fechaInicio) {
+      params.push(fechaInicio);
+      where.push(`DATE(p.fecha_creacion) >= $${params.length}`);
+    }
+
+    if (fechaFin) {
+      params.push(fechaFin);
+      where.push(`DATE(p.fecha_creacion) <= $${params.length}`);
+    }
+
+    const result = await pool.query(
+      `
       SELECT 
-        p.fecha_creacion as fecha,
-        COUNT(p.id) as total_pedidos,
-        COALESCE(SUM(p.total), 0) as total_ventas,
-        COALESCE(AVG(p.total), 0) as ticket_promedio
+        DATE(p.fecha_creacion) as fecha,
+        COUNT(p.id)::int as total_pedidos,
+        COALESCE(SUM(p.total), 0)::numeric(12,2) as total_ventas,
+        COALESCE(AVG(p.total), 0)::numeric(12,2) as ticket_promedio
       FROM pedidos p
-      WHERE p.estado = 'entregado'
-      GROUP BY p.fecha_creacion
-      ORDER BY p.fecha_creacion DESC
-    `);
+      WHERE ${where.join(" AND ")}
+      GROUP BY DATE(p.fecha_creacion)
+      ORDER BY DATE(p.fecha_creacion) DESC
+    `,
+      params,
+    );
 
     res.json(result.rows);
-
   } catch (error) {
     console.error("❌ ventas:", error);
-    res.status(500).json({ error: 'Error ventas' });
+    res.status(500).json({ error: "Error ventas" });
   }
 };
 
@@ -39,10 +55,9 @@ exports.generarReporteProductosPopulares = async (req, res) => {
     `);
 
     res.json(result.rows);
-
   } catch (error) {
     console.error("❌ ERROR PRODUCTOS:", error);
-    res.status(500).json({ error: 'Error productos populares' });
+    res.status(500).json({ error: "Error productos populares" });
   }
 };
 
@@ -65,10 +80,9 @@ exports.generarReporteInventario = async (req, res) => {
     `);
 
     res.json(result.rows);
-
   } catch (error) {
     console.error("❌ inventario:", error);
-    res.status(500).json({ error: 'Error inventario' });
+    res.status(500).json({ error: "Error inventario" });
   }
 };
 
@@ -88,10 +102,9 @@ exports.generarReporteMovimientos = async (req, res) => {
     `);
 
     res.json(result.rows);
-
   } catch (error) {
     console.error("❌ ERROR MOVIMIENTOS:", error);
-    res.status(500).json({ error: 'Error movimientos' });
+    res.status(500).json({ error: "Error movimientos" });
   }
 };
 
@@ -114,9 +127,8 @@ exports.generarReporteDetallePedidos = async (req, res) => {
     `);
 
     res.json(result.rows);
-
   } catch (error) {
     console.error("❌ ERROR DETALLE:", error);
-    res.status(500).json({ error: 'Error detalle pedidos' });
+    res.status(500).json({ error: "Error detalle pedidos" });
   }
 };

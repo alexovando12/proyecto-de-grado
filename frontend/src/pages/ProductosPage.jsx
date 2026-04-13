@@ -1,40 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext.jsx';
-import { productoService } from '../services/productoService.js';
-import api from '../services/api.js'; // 👈 agrega esta línea arriba de todo
+import React, { useState, useEffect } from "react";
+import { productoService } from "../services/productoService.js";
+import api from "../services/api.js"; // 👈 agrega esta línea arriba de todo
 
 const ProductosPage = () => {
-  const { user } = useAuth();
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingProducto, setEditingProducto] = useState(null);
   const [ingredientes, setIngredientes] = useState([]);
   const [receta, setReceta] = useState([]);
   const [productosPreparados, setProductosPreparados] = useState([]);
   const [formData, setFormData] = useState({
-    nombre: '',
-    descripcion: '',
-    precio: '',
-    categoria: 'plato',
-    tipo_inventario: 'general',
-    producto_preparado_id: null
+    nombre: "",
+    descripcion: "",
+    precio: "",
+    categoria: "plato",
+    tipo_inventario: "general",
+    producto_preparado_id: null,
   });
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoriaFiltro, setCategoriaFiltro] = useState('todos');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoriaFiltro, setCategoriaFiltro] = useState("todos");
   const [filteredProductos, setFilteredProductos] = useState([]);
 
+  const closeProductoModal = () => {
+    setShowForm(false);
+    setEditingProducto(null);
+    setReceta([]);
+    setFormData({
+      nombre: "",
+      descripcion: "",
+      precio: "",
+      categoria: "plato",
+      tipo_inventario: "general",
+      producto_preparado_id: null,
+    });
+  };
+
   const categorias = [
-    { value: 'todos', label: 'Todas las categorías' },
-    { value: 'plato', label: 'Platos' },
-    { value: 'bebida', label: 'Bebidas' },
-    { value: 'postre', label: 'Postres' },
-    { value: 'entrada', label: 'Entradas' }
+    { value: "todos", label: "Todas las categorías" },
+    { value: "plato", label: "Platos" },
+    { value: "bebida", label: "Bebidas" },
+    { value: "postre", label: "Postres" },
+    { value: "entrada", label: "Entradas" },
   ];
 
   const tiposInventario = [
-    { value: 'general', label: 'Inventario General (Platos por preparar)' },
-    { value: 'preparado', label: 'Productos Preparados' }
+    { value: "general", label: "Inventario General (Platos por preparar)" },
+    { value: "preparado", label: "Productos Preparados" },
   ];
 
   // =======================
@@ -58,34 +71,33 @@ const ProductosPage = () => {
       const data = await productoService.obtenerTodos();
       setProductos(data);
     } catch (error) {
-      console.error('Error al cargar productos:', error);
+      console.error("Error al cargar productos:", error);
     } finally {
       setLoading(false);
     }
   };
 
-const cargarIngredientes = async () => {
-  try {
-    const response = await api.get('/inventario/ingredientes');
-    const data = Array.isArray(response.data) ? response.data : [];
-    setIngredientes(data);
-  } catch (error) {
-    console.error('Error al cargar ingredientes:', error);
-    setIngredientes([]); // evita que sea undefined
-  }
-};
+  const cargarIngredientes = async () => {
+    try {
+      const response = await api.get("/inventario/ingredientes");
+      const data = Array.isArray(response.data) ? response.data : [];
+      setIngredientes(data);
+    } catch (error) {
+      console.error("Error al cargar ingredientes:", error);
+      setIngredientes([]); // evita que sea undefined
+    }
+  };
 
-const cargarProductosPreparados = async () => {
-  try {
-    const response = await api.get('/inventario/productos-preparados');
-    const data = Array.isArray(response.data) ? response.data : [];
-    setProductosPreparados(data);
-  } catch (error) {
-    console.error('Error al cargar productos preparados:', error);
-    setProductosPreparados([]);
-  }
-};
-
+  const cargarProductosPreparados = async () => {
+    try {
+      const response = await api.get("/inventario/productos-preparados");
+      const data = Array.isArray(response.data) ? response.data : [];
+      setProductosPreparados(data);
+    } catch (error) {
+      console.error("Error al cargar productos preparados:", error);
+      setProductosPreparados([]);
+    }
+  };
 
   // =======================
   // Filtros y búsqueda
@@ -93,14 +105,15 @@ const cargarProductosPreparados = async () => {
   const filtrarProductos = () => {
     let filtrados = productos;
 
-    if (categoriaFiltro !== 'todos') {
-      filtrados = filtrados.filter(p => p.categoria === categoriaFiltro);
+    if (categoriaFiltro !== "todos") {
+      filtrados = filtrados.filter((p) => p.categoria === categoriaFiltro);
     }
 
     if (searchTerm) {
-      filtrados = filtrados.filter(p =>
-        p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
+      filtrados = filtrados.filter(
+        (p) =>
+          p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.descripcion.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
 
@@ -117,60 +130,55 @@ const cargarProductosPreparados = async () => {
         filtrarProductos();
       }
     } catch (error) {
-      console.error('Error al buscar productos:', error);
+      console.error("Error al buscar productos:", error);
     }
   };
 
   // =======================
   // CRUD funciones
   // =======================
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  try {
-    if (formData.tipo_inventario === 'preparado' && !formData.producto_preparado_id) {
-      alert('Debes seleccionar un producto preparado asociado');
-      return;
+    try {
+      if (
+        formData.tipo_inventario === "preparado" &&
+        !formData.producto_preparado_id
+      ) {
+        alert("Debes seleccionar un producto preparado asociado");
+        return;
+      }
+
+      const productoData = {
+        nombre: formData.nombre.trim(),
+        descripcion: formData.descripcion,
+        precio: parseFloat(formData.precio),
+        categoria: formData.categoria,
+        tipo_inventario: formData.tipo_inventario,
+        producto_preparado_id:
+          formData.tipo_inventario === "preparado"
+            ? Number(formData.producto_preparado_id)
+            : null,
+        receta: formData.tipo_inventario === "general" ? receta : [],
+      };
+
+      if (editingProducto) {
+        await productoService.actualizar(editingProducto.id, productoData);
+      } else {
+        await productoService.crear(productoData);
+      }
+
+      closeProductoModal();
+      cargarProductos();
+    } catch (error) {
+      console.error("Error al guardar producto:", error);
+      alert(
+        error?.response?.data?.error ||
+          error.message ||
+          "Error al guardar producto",
+      );
     }
-
-    const productoData = {
-      nombre: formData.nombre.trim(),
-      descripcion: formData.descripcion,
-      precio: parseFloat(formData.precio),
-      categoria: formData.categoria,
-      tipo_inventario: formData.tipo_inventario,
-      producto_preparado_id:
-        formData.tipo_inventario === 'preparado'
-          ? Number(formData.producto_preparado_id)
-          : null,
-      receta: formData.tipo_inventario === 'general' ? receta : []
-    };
-
-    if (editingProducto) {
-      await productoService.actualizar(editingProducto.id, productoData);
-      setEditingProducto(null);
-    } else {
-      await productoService.crear(productoData);
-    }
-
-    setFormData({
-      nombre: '',
-      descripcion: '',
-      precio: '',
-      categoria: 'plato',
-      tipo_inventario: 'general',
-      producto_preparado_id: null
-    });
-
-    setReceta([]);
-    setShowForm(false);
-    cargarProductos();
-
-  } catch (error) {
-    console.error('Error al guardar producto:', error);
-    alert(error?.response?.data?.error || error.message || 'Error al guardar producto');
-  }
-};
+  };
 
   const handleEdit = (producto) => {
     setEditingProducto(producto);
@@ -179,19 +187,25 @@ const handleSubmit = async (e) => {
       descripcion: producto.descripcion,
       precio: producto.precio.toString(),
       categoria: producto.categoria,
-      tipo_inventario: producto.tipo_inventario || 'general',
-      producto_preparado_id: producto.producto_preparado_id || null
+      tipo_inventario: producto.tipo_inventario || "general",
+      producto_preparado_id: producto.producto_preparado_id || null,
     });
     setShowForm(true);
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('¿Estás seguro de eliminar este producto?')) {
+    if (window.confirm("¿Estás seguro de eliminar este producto?")) {
       try {
+        setError(null);
         await productoService.eliminar(id);
         cargarProductos();
       } catch (error) {
-        console.error('Error al eliminar producto:', error);
+        console.error("Error al eliminar producto:", error);
+        setError(
+          error?.response?.data?.error ||
+            error?.message ||
+            "Error al eliminar producto",
+        );
       }
     }
   };
@@ -201,20 +215,25 @@ const handleSubmit = async (e) => {
   // =======================
   const getCategoriaIcon = (categoria) => {
     switch (categoria) {
-      case 'plato': return '🍽️';
-      case 'bebida': return '🥤';
-      case 'postre': return '🍰';
-      case 'entrada': return '🥗';
-      default: return '🍴';
+      case "plato":
+        return "🍽️";
+      case "bebida":
+        return "🥤";
+      case "postre":
+        return "🍰";
+      case "entrada":
+        return "🥗";
+      default:
+        return "🍴";
     }
   };
 
   const getTipoInventarioLabel = (tipo) => {
-    return tipo === 'preparado' ? 'Producto Preparado' : 'Plato por preparar';
+    return tipo === "preparado" ? "Producto Preparado" : "Plato por preparar";
   };
 
   const getTipoInventarioClass = (tipo) => {
-    return tipo === 'preparado' ? 'tipo-preparado' : 'tipo-general';
+    return tipo === "preparado" ? "tipo-preparado" : "tipo-general";
   };
 
   // =======================
@@ -224,207 +243,274 @@ const handleSubmit = async (e) => {
 
   return (
     <div className="productos-container">
-      <header className="productos-header">
-        <div className="productos-header-content">
-          <h1 className="productos-title">Catálogo de Productos</h1>
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-            Nuevo Producto
-          </button>
-        </div>
-      </header>
-
       <main className="productos-content">
         <div className="container">
+          {error && (
+            <div className="productos-error-container">
+              <div className="productos-error-message">
+                <strong>Error:</strong> {error}
+                <button
+                  className="productos-error-close"
+                  onClick={() => setError(null)}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="productos-header-content">
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                setEditingProducto(null);
+                setReceta([]);
+                setFormData({
+                  nombre: "",
+                  descripcion: "",
+                  precio: "",
+                  categoria: "plato",
+                  tipo_inventario: "general",
+                  producto_preparado_id: null,
+                });
+                setShowForm(true);
+              }}
+            >
+              Nuevo Producto
+            </button>
+          </div>
+
           {showForm && (
-            <div className="producto-form">
-              <h3 className="producto-form-title">
-                {editingProducto ? 'Editar Producto' : 'Nuevo Producto'}
-              </h3>
+            <div className="modal-overlay">
+              <div className="modal-content modal-lg">
+                <div className="producto-form">
+                  <h3 className="producto-form-title">
+                    {editingProducto ? "Editar Producto" : "Nuevo Producto"}
+                  </h3>
 
-              <form onSubmit={handleSubmit}>
-                <div className="producto-form-group">
-                  <label className="producto-form-label">Nombre</label>
-                  <input
-                    type="text"
-                    className="producto-form-input"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    required
-                  />
-                </div>
+                  <form onSubmit={handleSubmit}>
+                    <div className="producto-form-group">
+                      <label className="producto-form-label">Nombre</label>
+                      <input
+                        type="text"
+                        className="producto-form-input"
+                        value={formData.nombre}
+                        onChange={(e) =>
+                          setFormData({ ...formData, nombre: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
 
-                <div className="producto-form-group">
-                  <label className="producto-form-label">Descripción</label>
-                  <textarea
-                    className="producto-form-textarea"
-                    value={formData.descripcion}
-                    onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                    required
-                  />
-                </div>
+                    <div className="producto-form-group">
+                      <label className="producto-form-label">Descripción</label>
+                      <textarea
+                        className="producto-form-textarea"
+                        value={formData.descripcion}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            descripcion: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
 
-                <div className="producto-form-group">
-                  <label className="producto-form-label">Precio</label>
-                  <input
-                    type="number"
-                    className="producto-form-input"
-                    value={formData.precio}
-                    onChange={(e) => setFormData({ ...formData, precio: e.target.value })}
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
+                    <div className="producto-form-group">
+                      <label className="producto-form-label">Precio</label>
+                      <input
+                        type="number"
+                        className="producto-form-input"
+                        value={formData.precio}
+                        onChange={(e) =>
+                          setFormData({ ...formData, precio: e.target.value })
+                        }
+                        min="0"
+                        step="0.01"
+                        required
+                      />
+                    </div>
 
-                <div className="producto-form-group">
-                  <label className="producto-form-label">Categoría</label>
-                  <select
-                    className="producto-form-select"
-                    value={formData.categoria}
-                    onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
-                    required
-                  >
-                    {categorias.filter(c => c.value !== 'todos').map(c => (
-                      <option key={c.value} value={c.value}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
+                    <div className="producto-form-group">
+                      <label className="producto-form-label">Categoría</label>
+                      <select
+                        className="producto-form-select"
+                        value={formData.categoria}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            categoria: e.target.value,
+                          })
+                        }
+                        required
+                      >
+                        {categorias
+                          .filter((c) => c.value !== "todos")
+                          .map((c) => (
+                            <option key={c.value} value={c.value}>
+                              {c.label}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
 
-                <div className="producto-form-group">
-                  <label className="producto-form-label">Tipo de Inventario</label>
-                  <select
-                    className="producto-form-select"
-                    value={formData.tipo_inventario}
-onChange={(e) => {
-  const nuevoTipo = e.target.value;
+                    <div className="producto-form-group">
+                      <label className="producto-form-label">
+                        Tipo de Inventario
+                      </label>
+                      <select
+                        className="producto-form-select"
+                        value={formData.tipo_inventario}
+                        onChange={(e) => {
+                          const nuevoTipo = e.target.value;
 
-  setFormData({
-    ...formData,
-    tipo_inventario: nuevoTipo,
-    producto_preparado_id: nuevoTipo === 'preparado' ? formData.producto_preparado_id : null
-  });
+                          setFormData({
+                            ...formData,
+                            tipo_inventario: nuevoTipo,
+                            producto_preparado_id:
+                              nuevoTipo === "preparado"
+                                ? formData.producto_preparado_id
+                                : null,
+                          });
 
-  setReceta([]);
-}}
-                    required
-                  >
-                    {tiposInventario.map(tipo => (
-                      <option key={tipo.value} value={tipo.value}>
-                        {tipo.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                          setReceta([]);
+                        }}
+                        required
+                      >
+                        {tiposInventario.map((tipo) => (
+                          <option key={tipo.value} value={tipo.value}>
+                            {tipo.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                {/* Si elige producto preparado */}
-                {formData.tipo_inventario === 'preparado' && (
-                  <div className="producto-form-group">
-                    <label className="producto-form-label">Seleccionar Producto Preparado</label>
-                    <select
-                      className="producto-form-select"
-                      value={formData.producto_preparado_id || ''}
-onChange={(e) =>
-  setFormData({
-    ...formData,
-    producto_preparado_id: e.target.value ? Number(e.target.value) : null
-  })
-}
-                    >
-                      <option value="">-- Selecciona un producto preparado --</option>
-                      {productosPreparados.map((p) => (
-                        <option key={p.id} value={p.id}>{p.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* Si elige inventario general (plato por preparar) */}
-                {formData.tipo_inventario === 'general' && (
-                  <div className="producto-form-group">
-                    <label className="producto-form-label">Ingredientes por plato</label>
-                    <div className="receta-lista">
-                      {receta.map((item, index) => (
-                        <div key={index} className="receta-item">
-                          <span>{item.nombre}</span>
-                          <span>{item.cantidad} {item.unidad || ''}</span>
-                          <button
-                            type="button"
-                            className="producto-form-btn producto-form-btn-delete"
-                            onClick={() => setReceta(receta.filter((_, i) => i !== index))}
-                          >
-                            ❌
-                          </button>
-                        </div>
-                      ))}
-
-                      <div className="receta-add">
-                        <select id="ingrediente-select" className="producto-form-select">
-                          {ingredientes.map((i) => (
-                            <option key={i.id} value={i.id}>{i.nombre}</option>
+                    {/* Si elige producto preparado */}
+                    {formData.tipo_inventario === "preparado" && (
+                      <div className="producto-form-group">
+                        <label className="producto-form-label">
+                          Seleccionar Producto Preparado
+                        </label>
+                        <select
+                          className="producto-form-select"
+                          value={formData.producto_preparado_id || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              producto_preparado_id: e.target.value
+                                ? Number(e.target.value)
+                                : null,
+                            })
+                          }
+                        >
+                          <option value="">
+                            -- Selecciona un producto preparado --
+                          </option>
+                          {productosPreparados.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.nombre}
+                            </option>
                           ))}
                         </select>
-                        <input
-                          type="number"
-                          placeholder="Cantidad por plato"
-                          id="ingrediente-cantidad"
-                          className="producto-form-input"
-                        />
-                        <button
-                          type="button"
-                          className="producto-form-btn producto-form-btn-secondary"
-                          onClick={() => {
-                            const select = document.getElementById('ingrediente-select');
-                            const cantidadInput = document.getElementById('ingrediente-cantidad');
-                            const selected = ingredientes.find(i => i.id == select.value);
-                            if (selected && cantidadInput.value > 0) {
-                              setReceta([
-                                ...receta,
-                                {
-                                  ingrediente_id: selected.id,
-                                  nombre: selected.nombre,
-                                  cantidad: parseFloat(cantidadInput.value),
-                                  unidad: selected.unidad || ''
-                                }
-                              ]);
-                              cantidadInput.value = '';
-                            }
-                          }}
-                        >
-                          ➕ Agregar
-                        </button>
                       </div>
-                    </div>
-                  </div>
-                )}
+                    )}
 
-                <div className="producto-form-actions">
-                  <button
-                    type="submit"
-                    className="producto-form-btn producto-form-btn-primary"
-                  >
-                    {editingProducto ? 'Actualizar' : 'Guardar'}
-                  </button>
-                  <button
-                    type="button"
-                    className="producto-form-btn producto-form-btn-secondary"
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditingProducto(null);
-                      setReceta([]);
-                      setFormData({
-                        nombre: '',
-                        descripcion: '',
-                        precio: '',
-                        categoria: 'plato',
-                        tipo_inventario: 'general',
-                        producto_preparado_id: null
-                      });
-                    }}
-                  >
-                    Cancelar
-                  </button>
+                    {/* Si elige inventario general (plato por preparar) */}
+                    {formData.tipo_inventario === "general" && (
+                      <div className="producto-form-group">
+                        <label className="producto-form-label">
+                          Ingredientes por plato
+                        </label>
+                        <div className="receta-lista">
+                          {receta.map((item, index) => (
+                            <div key={index} className="receta-item">
+                              <span>{item.nombre}</span>
+                              <span>
+                                {item.cantidad} {item.unidad || ""}
+                              </span>
+                              <button
+                                type="button"
+                                className="producto-form-btn producto-form-btn-delete"
+                                onClick={() =>
+                                  setReceta(
+                                    receta.filter((_, i) => i !== index),
+                                  )
+                                }
+                              >
+                                ❌
+                              </button>
+                            </div>
+                          ))}
+
+                          <div className="receta-add">
+                            <select
+                              id="ingrediente-select"
+                              className="producto-form-select"
+                            >
+                              {ingredientes.map((i) => (
+                                <option key={i.id} value={i.id}>
+                                  {i.nombre}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="number"
+                              placeholder="Cantidad por plato"
+                              id="ingrediente-cantidad"
+                              className="producto-form-input"
+                            />
+                            <button
+                              type="button"
+                              className="producto-form-btn producto-form-btn-secondary"
+                              onClick={() => {
+                                const select =
+                                  document.getElementById("ingrediente-select");
+                                const cantidadInput = document.getElementById(
+                                  "ingrediente-cantidad",
+                                );
+                                const selected = ingredientes.find(
+                                  (i) => i.id == select.value,
+                                );
+                                if (selected && cantidadInput.value > 0) {
+                                  setReceta([
+                                    ...receta,
+                                    {
+                                      ingrediente_id: selected.id,
+                                      nombre: selected.nombre,
+                                      cantidad: parseFloat(cantidadInput.value),
+                                      unidad: selected.unidad || "",
+                                    },
+                                  ]);
+                                  cantidadInput.value = "";
+                                }
+                              }}
+                            >
+                              ➕ Agregar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="producto-form-actions">
+                      <button
+                        type="submit"
+                        className="producto-form-btn producto-form-btn-primary"
+                      >
+                        {editingProducto ? "Actualizar" : "Guardar"}
+                      </button>
+                      <button
+                        type="button"
+                        className="producto-form-btn producto-form-btn-secondary"
+                        onClick={closeProductoModal}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
                 </div>
-              </form>
+              </div>
             </div>
           )}
 
@@ -444,7 +530,7 @@ onChange={(e) =>
               {categorias.map((categoria) => (
                 <button
                   key={categoria.value}
-                  className={`btn ${categoriaFiltro === categoria.value ? 'btn-primary' : 'btn-secondary'}`}
+                  className={`btn ${categoriaFiltro === categoria.value ? "btn-primary" : "btn-secondary"}`}
                   onClick={() => setCategoriaFiltro(categoria.value)}
                 >
                   {categoria.label}
@@ -456,7 +542,9 @@ onChange={(e) =>
           {filteredProductos.length === 0 ? (
             <div className="productos-empty">
               <div className="productos-empty-icon">📦</div>
-              <div className="productos-empty-text">No se encontraron productos</div>
+              <div className="productos-empty-text">
+                No se encontraron productos
+              </div>
             </div>
           ) : (
             <div className="productos-grid">
@@ -471,8 +559,11 @@ onChange={(e) =>
                     ${parseFloat(producto.precio).toFixed(2)}
                   </div>
                   <div className="producto-categoria">
-                    {producto.categoria.charAt(0).toUpperCase() + producto.categoria.slice(1)}
-                    <span className={`producto-tipo-inventario ${getTipoInventarioClass(producto.tipo_inventario)}`}>
+                    {producto.categoria.charAt(0).toUpperCase() +
+                      producto.categoria.slice(1)}
+                    <span
+                      className={`producto-tipo-inventario ${getTipoInventarioClass(producto.tipo_inventario)}`}
+                    >
                       ({getTipoInventarioLabel(producto.tipo_inventario)})
                     </span>
                   </div>

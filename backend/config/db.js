@@ -1,6 +1,6 @@
-﻿const { Pool } = require('pg');
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
+﻿const { Pool } = require("pg");
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
 }
 
 const pool = new Pool({
@@ -11,12 +11,21 @@ const pool = new Pool({
   },
 });
 
+pool.on("connect", (client) => {
+  client.query("SET TIME ZONE 'America/La_Paz'").catch((err) => {
+    console.error(
+      "⚠️ No se pudo configurar timezone America/La_Paz:",
+      err.message,
+    );
+  });
+});
+
 // Test conexión
 pool.connect((err, client, release) => {
   if (err) {
-    console.error('❌ Error conectando a PostgreSQL:', err.stack);
+    console.error("❌ Error conectando a PostgreSQL:", err.stack);
   } else {
-    console.log('✅ Conectado a Supabase exitosamente');
+    console.log("✅ Conectado a Supabase exitosamente");
     release();
   }
 });

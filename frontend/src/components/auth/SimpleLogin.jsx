@@ -1,64 +1,60 @@
-import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { BACKEND_API_URL } from "../../config/backend.js";
 
 const SimpleLogin = () => {
-  const [email, setEmail] = useState('admin@garden.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState("admin@garden.com");
+  const [password, setPassword] = useState("password123");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const { login } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMessage('');
+    setMessage("");
 
     try {
-      console.log('🚀 Enviando login:', { email, password: '***' });
+      console.log("🚀 Enviando login:", { email, password: "***" });
 
-      // 🔥 URL DINÁMICA (YA NO localhost)
-      const API_URL = import.meta.env.VITE_API_URL;
-
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
+      const response = await fetch(`${BACKEND_API_URL}/auth/login`, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          email, 
-          password
+        body: JSON.stringify({
+          email,
+          password,
         }),
       });
 
-      console.log('📡 Status:', response.status);
-      console.log('📋 Status Text:', response.statusText);
+      console.log("📡 Status:", response.status);
+      console.log("📋 Status Text:", response.statusText);
 
       if (response.status === 500) {
         const errorText = await response.text();
-        console.error('🚨 Error 500 del servidor:', errorText);
+        console.error("🚨 Error 500 del servidor:", errorText);
         setMessage(`Error del servidor: ${errorText}`);
         return;
       }
 
       const data = await response.json();
-      console.log('📦 Respuesta:', data);
+      console.log("📦 Respuesta:", data);
 
       if (response.ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.usuario));
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.usuario));
 
-        setMessage('✅ ¡Login exitoso! Redirigiendo...');
+        setMessage("✅ ¡Login exitoso! Redirigiendo...");
 
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          window.location.href = "/dashboard";
         }, 1500);
-
       } else {
-        setMessage(`❌ Error: ${data.error || 'Credenciales inválidas'}`);
+        setMessage(`❌ Error: ${data.error || "Credenciales inválidas"}`);
       }
-
     } catch (error) {
-      console.error('💥 Error de conexión:', error);
+      console.error("💥 Error de conexión:", error);
       setMessage(`💥 Error de conexión: ${error.message}`);
     } finally {
       setLoading(false);
@@ -91,16 +87,14 @@ const SimpleLogin = () => {
         />
       </div>
 
-      <button
-        type="submit"
-        className="auth-button"
-        disabled={loading}
-      >
-        {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+      <button type="submit" className="auth-button" disabled={loading}>
+        {loading ? "Iniciando sesión..." : "Iniciar sesión"}
       </button>
-      
+
       {message && (
-        <div className={`auth-message ${message.includes('exitoso') ? 'auth-message-success' : 'auth-message-error'}`}>
+        <div
+          className={`auth-message ${message.includes("exitoso") ? "auth-message-success" : "auth-message-error"}`}
+        >
           {message}
         </div>
       )}

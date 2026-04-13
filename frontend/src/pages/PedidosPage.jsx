@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from "../context/AuthContext.jsx";
+import React, { useState, useEffect } from "react";
 import { pedidoService } from "../services/pedidoService.js";
 import PedidoForm from "../components/pedidos/PedidoForm.jsx";
 import { io } from "socket.io-client";
+import { BACKEND_BASE_URL } from "../config/backend.js";
 
-const socket = io(import.meta.env.VITE_API_URL, {
+const socket = io(BACKEND_BASE_URL, {
   transports: ["polling", "websocket"],
   reconnection: true,
   reconnectionAttempts: 10,
@@ -12,20 +12,32 @@ const socket = io(import.meta.env.VITE_API_URL, {
 });
 
 const toNum = (v) => {
-  const n = Number(String(v ?? '').replace(',', '.'));
+  const n = Number(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 };
 
 const toMoney = (v) =>
-  new Intl.NumberFormat('es-BO', {
-    style: 'currency',
-    currency: 'BOB',
+  new Intl.NumberFormat("es-BO", {
+    style: "currency",
+    currency: "BOB",
     minimumFractionDigits: 2,
   }).format(toNum(v));
 
+const getTodayBoliviaDate = () =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/La_Paz",
+  }).format(new Date());
+
+const sortByFechaActualizacionAsc = (lista) =>
+  [...(Array.isArray(lista) ? lista : [])].sort((a, b) => {
+    const fa = new Date(a?.fecha_actualizacion || 0).getTime();
+    const fb = new Date(b?.fecha_actualizacion || 0).getTime();
+    return fa - fb;
+  });
+
 const normalizePedido = (p) => {
   const detalles = Array.isArray(p?.detalles)
-    ? p.detalles.map(d => ({
+    ? p.detalles.map((d) => ({
         ...d,
         precio: toNum(d?.precio),
         cantidad: toNum(d?.cantidad),
@@ -34,79 +46,97 @@ const normalizePedido = (p) => {
 
   const totalCalc = detalles.reduce((acc, d) => acc + d.precio * d.cantidad, 0);
   const total = toNum(p?.total) || totalCalc;
+  const usuarioId = Number(p?.usuario_id);
+  const usuarioNombre = p?.usuario_nombre ?? p?.mozo_nombre ?? null;
 
   return {
     ...p,
-    estado: p?.estado ?? 'preparando',
+    usuario_id: Number.isFinite(usuarioId) ? usuarioId : null,
+    usuario_nombre: usuarioNombre,
+    estado: p?.estado ?? "preparando",
     detalles,
     total,
   };
 };
 
 const PedidosPage = () => {
-  const { user } = useAuth();
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedMesa, setSelectedMesa] = useState(null);
-  const [filtroEstado, setFiltroEstado] = useState('');
-  const [searchPedido, setSearchPedido] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState("");
+  const [fechaFiltro, setFechaFiltro] = useState(getTodayBoliviaDate());
+  const [searchPedido, setSearchPedido] = useState("");
   // 🔥 Modal para edición
   const [showEditForm, setShowEditForm] = useState(false);
   const [pedidoEditando, setPedidoEditando] = useState(null);
 
-useEffect(() => {
-  cargarPedidos();
-  socket.on("connect", () => {
-  console.log("✅ Socket pedidos conectado:", socket.id);
-});
-
-socket.on("disconnect", (reason) => {
-  console.log("❌ Socket pedidos desconectado:", reason);
-});
-  socket.on("pedidoCreado", (pedido) => {
-    setPedidos(prev => {
-      const existe = prev.some(p => p.id === pedido.id);
-      if (existe) return prev;
-      return [normalizePedido(pedido), ...prev];
-    });
-  });
-
-  socket.on("pedidoActualizado", (pedido) => {
-    setPedidos(prev => {
-      const existe = prev.some(p => p.id === pedido.id);
-
-      if (existe) {
-        return prev.map(p =>
-          p.id === pedido.id ? normalizePedido(pedido) : p
-        );
-      }
-
-      return [normalizePedido(pedido), ...prev];
-    });
-
-    window.dispatchEvent(new Event('mesa-status-changed'));
-  });
-
-  socket.on("pedidoEliminado", ({ id }) => {
-    setPedidos(prev => prev.filter(p => p.id !== id));
-    window.dispatchEvent(new Event('mesa-status-changed'));
-  });
-
-  return () => {
-    socket.off("pedidoCreado");
-    socket.off("pedidoActualizado");
-    socket.off("pedidoEliminado");
+  const closeNuevoPedidoModal = () => {
+    setShowForm(false);
+    setSelectedMesa(null);
   };
-}, []);
+
+  const closeEditarPedidoModal = () => {
+    setShowEditForm(false);
+    setPedidoEditando(null);
+  };
+
+  useEffect(() => {
+    const onConnect = () => {
+      console.log("✅ Socket pedidos conectado:", socket.id);
+    };
+
+    const onDisconnect = (reason) => {
+      console.log("❌ Socket pedidos desconectado:", reason);
+    };
+
+    const onPedidoCreado = () => {
+      cargarPedidos();
+    };
+
+    const onPedidoActualizado = () => {
+      cargarPedidos();
+      window.dispatchEvent(new Event("mesa-status-changed"));
+    };
+
+    const onPedidoEliminado = () => {
+      cargarPedidos();
+      window.dispatchEvent(new Event("mesa-status-changed"));
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("pedidoCreado", onPedidoCreado);
+    socket.on("pedidoActualizado", onPedidoActualizado);
+    socket.on("pedidoEliminado", onPedidoEliminado);
+
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("pedidoCreado", onPedidoCreado);
+      socket.off("pedidoActualizado", onPedidoActualizado);
+      socket.off("pedidoEliminado", onPedidoEliminado);
+    };
+  }, [filtroEstado, fechaFiltro]);
+
+  useEffect(() => {
+    cargarPedidos();
+  }, [filtroEstado, fechaFiltro]);
 
   const cargarPedidos = async () => {
     try {
       setLoading(true);
-      const data = await pedidoService.obtenerTodos();
-      setPedidos((Array.isArray(data) ? data : []).map(normalizePedido));
+      const data = filtroEstado
+        ? await pedidoService.obtenerPorEstado(filtroEstado, fechaFiltro)
+        : await pedidoService.obtenerTodos(fechaFiltro);
+
+      setPedidos(
+        sortByFechaActualizacionAsc(
+          (Array.isArray(data) ? data : []).map(normalizePedido),
+        ),
+      );
     } catch (error) {
-      console.error('Error al cargar pedidos:', error);
+      console.error("Error al cargar pedidos:", error);
     } finally {
       setLoading(false);
     }
@@ -115,123 +145,140 @@ socket.on("disconnect", (reason) => {
   const handlePedidoCreado = () => {
     setShowForm(false);
     setSelectedMesa(null);
-    setFiltroEstado('');
+    setFiltroEstado("");
     cargarPedidos();
   };
 
-const actualizarEstadoPedido = async (id, estado) => {
-  try {
-    const pedidoActualizado = await pedidoService.actualizarEstado(Number(id), estado);
-
-    setPedidos(prev =>
-      prev.map(p =>
-        p.id === pedidoActualizado.id ? normalizePedido(pedidoActualizado) : p
-      )
-    );
-  } catch (error) {
-    const msg = error?.response?.data?.message || error?.response?.data || error.message;
-    console.error('Error al actualizar estado:', msg);
-    alert(`No se pudo actualizar el estado: ${msg}`);
-  }
-};
+  const actualizarEstadoPedido = async (id, estado) => {
+    try {
+      await pedidoService.actualizarEstado(Number(id), estado);
+      await cargarPedidos();
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        error?.response?.data ||
+        error.message;
+      console.error("Error al actualizar estado:", msg);
+      alert(`No se pudo actualizar el estado: ${msg}`);
+    }
+  };
 
   const editarPedido = (pedido) => {
     setPedidoEditando(pedido);
     setShowEditForm(true);
   };
 
-const liberarMesa = async (id) => {
-  try {
-    const confirmacion = window.confirm('¿Cerrar pedido y liberar mesa?');
-    if (!confirmacion) return;
+  const liberarMesa = async (id) => {
+    try {
+      const confirmacion = window.confirm("¿Cerrar pedido y liberar mesa?");
+      if (!confirmacion) return;
 
-    const response = await pedidoService.liberarMesa(Number(id));
-    const pedidoCerrado = response?.pedido;
+      const response = await pedidoService.liberarMesa(Number(id));
+      const pedidoCerrado = response?.pedido;
 
-    if (pedidoCerrado) {
-      setPedidos(prev =>
-        prev.map(p =>
-          p.id === pedidoCerrado.id ? normalizePedido(pedidoCerrado) : p
-        )
-      );
+      if (pedidoCerrado) {
+        await cargarPedidos();
+      }
+
+      window.dispatchEvent(new Event("mesa-status-changed"));
+      alert("Pedido cerrado y mesa liberada correctamente");
+    } catch (error) {
+      alert(error.message);
     }
-
-    window.dispatchEvent(new Event('mesa-status-changed'));
-    alert('Pedido cerrado y mesa liberada correctamente');
-  } catch (error) {
-    alert(error.message);
-  }
-};
+  };
 
   const getEstadoClass = (estado) => {
     switch (estado) {
-      case 'preparando':  return 'badge-primary';
-      case 'listo':       return 'badge-success';
-      case 'entregado':   return 'badge-secondary';
-      case 'cerrado':     return 'badge-dark';
-      default:            return 'badge-secondary';
+      case "preparando":
+        return "badge-primary";
+      case "listo":
+        return "badge-success";
+      case "entregado":
+        return "badge-secondary";
+      case "cerrado":
+        return "badge-dark";
+      default:
+        return "badge-secondary";
     }
   };
 
   const getEstadoText = (estado) => {
     switch (estado) {
-      case 'preparando':  return 'Preparando';
-      case 'listo':       return 'Listo';
-      case 'entregado':   return 'Entregado';
-      case 'cerrado':     return 'Cerrado';
-      default:            return estado || '—';
+      case "preparando":
+        return "Preparando";
+      case "listo":
+        return "Listo";
+      case "entregado":
+        return "Entregado";
+      case "cerrado":
+        return "Cerrado";
+      default:
+        return estado || "—";
     }
   };
-const pedidosFiltrados = pedidos.filter((pedido) => {
-  const texto = searchPedido.toLowerCase();
+  const pedidosFiltrados = pedidos.filter((pedido) => {
+    const texto = searchPedido.toLowerCase();
 
-  const coincideNumero = String(pedido.id).includes(texto);
+    const coincideNumero = String(pedido.id).includes(texto);
 
-  const coincideProducto = (pedido.detalles || []).some((detalle) =>
-    (detalle.producto_nombre || '').toLowerCase().includes(texto)
-  );
+    const coincideProducto = (pedido.detalles || []).some((detalle) =>
+      (detalle.producto_nombre || "").toLowerCase().includes(texto),
+    );
 
-  const coincideEstado = !filtroEstado || pedido.estado === filtroEstado;
+    const coincideEstado = !filtroEstado || pedido.estado === filtroEstado;
 
-  return (coincideNumero || coincideProducto || !texto) && coincideEstado;
-});
+    return (coincideNumero || coincideProducto || !texto) && coincideEstado;
+  });
   if (loading) return <div>Cargando...</div>;
 
   return (
     <div className="pedidos-container">
-      <header className="pedidos-header">
-        <div className="pedidos-header-content">
-          <h1 className="pedidos-title">Toma de Pedidos</h1>
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
-            Nuevo Pedido
-          </button>
-        </div>
-      </header>
-
       <main className="pedidos-content">
         <div className="container">
+          <div className="pedidos-header-content">
+            <button
+              className="btn btn-primary"
+              onClick={() => setShowForm(true)}
+            >
+              Nuevo Pedido
+            </button>
+          </div>
+
           {/* Formulario para NUEVO pedido */}
           {showForm && (
-            <PedidoForm
-              onPedidoCreado={handlePedidoCreado}
-              mesaSeleccionada={selectedMesa}
-            />
+            <div className="modal-overlay">
+              <div className="modal-content modal-lg">
+                <h2>Nuevo Pedido</h2>
+                <PedidoForm
+                  onPedidoCreado={handlePedidoCreado}
+                  mesaSeleccionada={selectedMesa}
+                />
+                <button
+                  className="btn btn-secondary mt-2"
+                  onClick={closeNuevoPedidoModal}
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
           )}
 
           {/* Modal para EDITAR pedido */}
           {showEditForm && (
             <div className="modal-overlay">
-              <div className="modal-content">
+              <div className="modal-content modal-lg">
                 <h2>Editar Pedido #{pedidoEditando?.id}</h2>
                 <PedidoForm
                   pedidoExistente={pedidoEditando}
                   onPedidoCreado={() => {
-                    setShowEditForm(false);
-                    setPedidoEditando(null);
+                    closeEditarPedidoModal();
                     cargarPedidos();
                   }}
                 />
-                <button className="btn btn-secondary mt-2" onClick={() => setShowEditForm(false)}>
+                <button
+                  className="btn btn-secondary mt-2"
+                  onClick={closeEditarPedidoModal}
+                >
                   Cerrar
                 </button>
               </div>
@@ -242,24 +289,16 @@ const pedidosFiltrados = pedidos.filter((pedido) => {
             <div className="pedidos-filters-group">
               <label className="form-label">Filtrar por estado:</label>
               <input
-  type="text"
-  className="form-control"
-  placeholder="Buscar por número o nombre del producto..."
-  value={searchPedido}
-  onChange={(e) => setSearchPedido(e.target.value)}
-/>
+                type="text"
+                className="form-control"
+                placeholder="Buscar por número o nombre del producto..."
+                value={searchPedido}
+                onChange={(e) => setSearchPedido(e.target.value)}
+              />
               <select
                 className="form-control"
                 value={filtroEstado}
-                onChange={async (e) => {
-                  const estado = e.target.value;
-                  setFiltroEstado(estado);
-                  if (!estado) cargarPedidos();
-                  else {
-                    const data = await pedidoService.obtenerPorEstado(estado);
-                    setPedidos((Array.isArray(data) ? data : []).map(normalizePedido));
-                  }
-                }}
+                onChange={(e) => setFiltroEstado(e.target.value)}
               >
                 <option value="">Todos</option>
                 <option value="preparando">Preparando</option>
@@ -267,17 +306,28 @@ const pedidosFiltrados = pedidos.filter((pedido) => {
                 <option value="entregado">Entregado</option>
                 <option value="cerrado">Cerrado</option>
               </select>
+              <input
+                type="date"
+                className="form-control"
+                value={fechaFiltro}
+                onChange={(e) => setFechaFiltro(e.target.value)}
+              />
             </div>
           </div>
 
           <div className="pedidos-grid">
-{pedidosFiltrados.map((pedido) => (
+            {pedidosFiltrados.map((pedido) => (
               <div key={pedido.id} className="pedido-card">
                 <div className="pedido-card-header">
                   <div className="pedido-card-info">
                     <h3 className="pedido-card-title">Pedido #{pedido.id}</h3>
                     <p className="pedido-card-subtitle">
-                      Mesa {pedido.mesa_numero ?? '—'} • {pedido.mozo_nombre ?? user?.nombre ?? '—'}
+                      Mesa {pedido.mesa_numero ?? pedido.mesa_id ?? "—"} •{" "}
+                      {pedido.usuario_nombre ??
+                        pedido.mozo_nombre ??
+                        (pedido.usuario_id
+                          ? `Usuario #${pedido.usuario_id}`
+                          : "—")}
                     </p>
                   </div>
                   <div className="pedido-card-status">
@@ -291,13 +341,19 @@ const pedidosFiltrados = pedidos.filter((pedido) => {
                   <h4 className="pedido-detalles-title">Detalles:</h4>
                   {(pedido.detalles ?? []).map((detalle, index) => (
                     <div key={index} className="pedido-detalle">
-                      <span className="pedido-detalle-nombre">{detalle.producto_nombre ?? '—'}</span>
-                      <span className="pedido-detalle-cantidad">x{detalle.cantidad}</span>
+                      <span className="pedido-detalle-nombre">
+                        {detalle.producto_nombre ?? "—"}
+                      </span>
+                      <span className="pedido-detalle-cantidad">
+                        x{detalle.cantidad}
+                      </span>
                       <span className="pedido-detalle-precio">
                         {toMoney(detalle.precio * detalle.cantidad)}
                       </span>
                       {detalle.notas && (
-                        <span className="pedido-detalle-notas">Nota: {detalle.notas}</span>
+                        <span className="pedido-detalle-notas">
+                          Nota: {detalle.notas}
+                        </span>
                       )}
                     </div>
                   ))}
@@ -307,35 +363,36 @@ const pedidosFiltrados = pedidos.filter((pedido) => {
                   <div className="pedido-card-total">
                     <strong>Total: {toMoney(pedido.total)}</strong>
                   </div>
-<div className="pedido-card-actions">
-  {pedido.estado !== 'cerrado' && (
-    <button
-      className="btn btn-warning btn-sm"
-      onClick={() => editarPedido(pedido)}
-    >
-      Editar
-    </button>
-  )}
+                  <div className="pedido-card-actions">
+                    {pedido.estado !== "cerrado" && (
+                      <button
+                        className="btn btn-warning btn-sm"
+                        onClick={() => editarPedido(pedido)}
+                      >
+                        Editar
+                      </button>
+                    )}
 
-  {pedido.estado === 'listo' && (
-    <button
-      className="btn btn-success btn-sm"
-      onClick={() => actualizarEstadoPedido(pedido.id, 'entregado')}
-    >
-      Entregar
-    </button>
-  )}
+                    {pedido.estado === "listo" && (
+                      <button
+                        className="btn btn-success btn-sm"
+                        onClick={() =>
+                          actualizarEstadoPedido(pedido.id, "entregado")
+                        }
+                      >
+                        Entregar
+                      </button>
+                    )}
 
-  {pedido.estado === 'entregado' && (
-    <button
-      className="btn btn-danger btn-sm"
-      onClick={() => liberarMesa(pedido.id)}
-    >
-      Cerrar Pedido
-    </button>
-  )}
-</div>
-
+                    {pedido.estado === "entregado" && (
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => liberarMesa(pedido.id)}
+                      >
+                        Cerrar Pedido
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

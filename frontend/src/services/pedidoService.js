@@ -5,9 +5,11 @@ export const pedidoService = {
   // =========================
   // OBTENER
   // =========================
-  obtenerTodos: async () => {
+  obtenerTodos: async (fecha) => {
     try {
-      const { data } = await api.get('/pedidos');
+      const { data } = await api.get('/pedidos', {
+        params: fecha ? { fecha } : undefined,
+      });
       return data;
     } catch {
       return [];
@@ -103,9 +105,11 @@ actualizar: async (id, pedido) => {
       throw new Error(error.response?.data?.error || error.message);
     }
   },
-  obtenerPorEstado: async (estado) => {
+  obtenerPorEstado: async (estado, fecha) => {
   try {
-    const { data } = await api.get(`/pedidos/estado/${estado}`);
+    const { data } = await api.get(`/pedidos/estado/${estado}`, {
+      params: fecha ? { fecha } : undefined,
+    });
     return data;
   } catch (error) {
     throw new Error(error.response?.data?.error || error.message);
