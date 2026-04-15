@@ -79,7 +79,10 @@ const CocinaPage = () => {
 
   const cargarPedidos = async () => {
     try {
-      const data = await pedidoService.obtenerPorEstado(filtroEstado, fechaFiltro);
+      const data = await pedidoService.obtenerPorEstado(
+        filtroEstado,
+        fechaFiltro,
+      );
       setPedidos(sortByFechaActualizacionAsc(data.map(normalizePedido)));
     } catch (error) {
       console.error("Error al cargar pedidos:", error);

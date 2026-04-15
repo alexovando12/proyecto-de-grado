@@ -12,6 +12,23 @@ class Producto {
     return result.rows[0];
   }
 
+  static async obtenerRecetaPorProductoId(productoId) {
+    const result = await pool.query(
+      `SELECT
+         r.ingrediente_id,
+         r.cantidad,
+         i.nombre AS ingrediente_nombre,
+         i.unidad AS ingrediente_unidad
+       FROM recetas r
+       JOIN ingredientes i ON i.id = r.ingrediente_id
+       WHERE r.producto_id = $1
+       ORDER BY i.nombre`,
+      [productoId]
+    );
+
+    return result.rows;
+  }
+
  static async crear(producto) {
   const {
     nombre,

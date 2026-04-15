@@ -601,6 +601,12 @@ body {
   font-size: 0.9rem;
 }
 
+.producto-acciones {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+}
+
 /* Movimientos Table */
 .movimientos-container {
   overflow-x: auto;

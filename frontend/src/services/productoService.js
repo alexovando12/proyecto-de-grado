@@ -11,6 +11,11 @@ export const productoService = {
     return response.data;
   },
 
+  obtenerReceta: async (id) => {
+    const response = await api.get(`/productos/${id}/receta`);
+    return response.data;
+  },
+
   crear: async (producto) => {
     const response = await api.post('/productos', producto);
     return response.data;

@@ -160,7 +160,6 @@ const ReportesPage = () => {
             <th>Unidad</th>
             <th>Stock Actual</th>
             <th>Stock Mínimo</th>
-            <th>Valor Total</th>
             <th>Estado</th>
           </tr>
         </thead>
@@ -171,7 +170,6 @@ const ReportesPage = () => {
               <td>{item.unidad}</td>
               <td>{item.stock_actual}</td>
               <td>{item.stock_minimo}</td>
-              <td>{formatearMoneda(item.valor_total)}</td>
               <td>
                 <span
                   className={`reporte-badge ${

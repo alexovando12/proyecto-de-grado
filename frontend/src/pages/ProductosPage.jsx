@@ -70,8 +70,15 @@ const ProductosPage = () => {
     try {
       const data = await productoService.obtenerTodos();
       setProductos(data);
+      return data;
     } catch (error) {
       console.error("Error al cargar productos:", error);
+      setError(
+        error?.response?.data?.error ||
+          error?.message ||
+          "Error al cargar productos",
+      );
+      return [];
     } finally {
       setLoading(false);
     }
@@ -168,8 +175,8 @@ const ProductosPage = () => {
         await productoService.crear(productoData);
       }
 
+      await cargarProductos();
       closeProductoModal();
-      cargarProductos();
     } catch (error) {
       console.error("Error al guardar producto:", error);
       alert(
@@ -180,7 +187,8 @@ const ProductosPage = () => {
     }
   };
 
-  const handleEdit = (producto) => {
+  const handleEdit = async (producto) => {
+    setError(null);
     setEditingProducto(producto);
     setFormData({
       nombre: producto.nombre,
@@ -190,6 +198,29 @@ const ProductosPage = () => {
       tipo_inventario: producto.tipo_inventario || "general",
       producto_preparado_id: producto.producto_preparado_id || null,
     });
+
+    if ((producto.tipo_inventario || "general") === "general") {
+      try {
+        const recetaProducto = await productoService.obtenerReceta(producto.id);
+        setReceta(
+          recetaProducto.map((item) => ({
+            ingrediente_id: item.ingrediente_id,
+            nombre: item.ingrediente_nombre,
+            cantidad: Number(item.cantidad),
+            unidad: item.ingrediente_unidad || "",
+          })),
+        );
+      } catch (error) {
+        console.error("Error al cargar receta del producto:", error);
+        setReceta([]);
+        setError(
+          error?.response?.data?.error ||
+            error?.message ||
+            "No se pudo cargar la receta del producto",
+        );
+      }
+    }
+
     setShowForm(true);
   };
 

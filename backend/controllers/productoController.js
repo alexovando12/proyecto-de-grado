@@ -24,6 +24,16 @@ exports.obtenerProducto = async (req, res) => {
   }
 };
 
+exports.obtenerRecetaProducto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const receta = await Producto.obtenerRecetaPorProductoId(id);
+    res.json(receta);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.crearProducto = async (req, res) => {
   const client = await pool.connect();
   try {

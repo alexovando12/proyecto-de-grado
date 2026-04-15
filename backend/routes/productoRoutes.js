@@ -7,6 +7,7 @@ const auth = require('../middleware/auth');
 router.get('/', productoController.obtenerProductos);
 router.get('/buscar', productoController.buscarProductos);
 router.get('/categoria/:categoria', productoController.obtenerProductosPorCategoria);
+router.get('/:id/receta', productoController.obtenerRecetaProducto);
 router.get('/:id', productoController.obtenerProducto);
 
 // Rutas protegidas (requieren autenticación)

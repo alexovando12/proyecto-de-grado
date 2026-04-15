@@ -155,7 +155,9 @@ exports.obtenerPedidos = async (req, res) => {
     const { fecha } = req.query;
 
     if (fecha && !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-      return res.status(400).json({ error: "Formato de fecha inválido. Usa YYYY-MM-DD" });
+      return res
+        .status(400)
+        .json({ error: "Formato de fecha inválido. Usa YYYY-MM-DD" });
     }
 
     const pedidos = await Pedido.obtenerTodosConDetalles({ fecha });
@@ -329,7 +331,9 @@ exports.obtenerPedidosPorEstado = async (req, res) => {
     const { fecha } = req.query;
 
     if (fecha && !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-      return res.status(400).json({ error: "Formato de fecha inválido. Usa YYYY-MM-DD" });
+      return res
+        .status(400)
+        .json({ error: "Formato de fecha inválido. Usa YYYY-MM-DD" });
     }
 
     const pedidos = await Pedido.obtenerPorEstadoConDetalles(estado, { fecha });

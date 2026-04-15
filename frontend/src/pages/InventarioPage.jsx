@@ -33,8 +33,8 @@ const InventarioPage = () => {
   const [ingredienteForm, setIngredienteForm] = useState({
     nombre: "",
     unidad: "g",
-    stock_actual: 0,
-    stock_minimo: 1,
+    stock_actual: "0",
+    stock_minimo: "1",
     costo_por_unidad: 0,
 
     // 🔥 NUEVO
@@ -46,13 +46,13 @@ const InventarioPage = () => {
     nombre: "",
     descripcion: "",
     unidad: "unidades",
-    stock_actual: 0,
-    stock_minimo: 5,
+    stock_actual: "0",
+    stock_minimo: "5",
   });
 
   const [recetaForm, setRecetaForm] = useState({
     ingrediente_id: "",
-    cantidad: 0,
+    cantidad: "",
   });
 
   const [prepararForm, setPrepararForm] = useState({
@@ -79,21 +79,26 @@ const InventarioPage = () => {
     );
   };
 
-  const getInputStep = (unidad = "") => (esUnidadEntera(unidad) ? "1" : "0.01");
-
   const normalizarValorNumerico = (rawValue, permitirDecimal) => {
-    const valor = String(rawValue).replace(",", ".");
-    const regex = permitirDecimal ? /^\d*\.?\d*$/ : /^\d*$/;
-
-    if (!regex.test(valor)) {
-      return null;
-    }
+    const valor = String(rawValue).replace(/\s+/g, "").replace(/,/g, ".");
 
     if (valor === "") {
       return "";
     }
 
-    return Number(valor);
+    if (permitirDecimal) {
+      const soloNumerosYPunto = valor.replace(/[^\d.]/g, "");
+      const [parteEntera = "", ...resto] = soloNumerosYPunto.split(".");
+
+      if (resto.length === 0) {
+        return parteEntera;
+      }
+
+      return `${parteEntera}.${resto.join("")}`;
+    }
+
+    const coincidenciaEntera = valor.match(/^\d*/);
+    return coincidenciaEntera ? coincidenciaEntera[0] : "";
   };
 
   const esCantidadValidaPorUnidad = (valor, unidad) => {
@@ -488,7 +493,7 @@ const InventarioPage = () => {
 
   // Funciones para recetas
   const agregarIngredienteAReceta = () => {
-    setRecetaItems([...recetaItems, { ingrediente_id: "", cantidad: 0 }]);
+    setRecetaItems([...recetaItems, { ingrediente_id: "", cantidad: "" }]);
   };
 
   const actualizarIngredienteReceta = (index, campo, valor) => {
@@ -513,7 +518,8 @@ const InventarioPage = () => {
       setRecetaItems(
         receta.map((item) => ({
           ingrediente_id: item.ingrediente_id,
-          cantidad: item.cantidad,
+          cantidad: String(item.cantidad ?? ""),
+          ingrediente_unidad: item.ingrediente_unidad,
         })),
       );
     } catch (error) {
@@ -539,8 +545,8 @@ const InventarioPage = () => {
       nombre: producto.nombre,
       descripcion: producto.descripcion,
       unidad: producto.unidad,
-      stock_actual: producto.stock_actual,
-      stock_minimo: producto.stock_minimo,
+      stock_actual: String(producto.stock_actual ?? ""),
+      stock_minimo: String(producto.stock_minimo ?? ""),
     });
 
     // Cargar receta del producto
@@ -574,9 +580,11 @@ const InventarioPage = () => {
     setIngredienteForm({
       nombre: "",
       unidad: "g",
-      stock_actual: 0,
-      stock_minimo: 1,
+      stock_actual: "0",
+      stock_minimo: "1",
       costo_por_unidad: 0,
+      tipo_ajuste: "aumentar",
+      cantidad_ajuste: "",
     });
     setShowIngredienteForm(false);
     setEditingIngrediente(null);
@@ -587,8 +595,8 @@ const InventarioPage = () => {
       nombre: "",
       descripcion: "",
       unidad: "unidades",
-      stock_actual: 0,
-      stock_minimo: 5,
+      stock_actual: "0",
+      stock_minimo: "5",
       costo_por_unidad: 0,
     });
     setRecetaItems([]);
@@ -599,7 +607,7 @@ const InventarioPage = () => {
   const resetRecetaForm = () => {
     setRecetaForm({
       ingrediente_id: "",
-      cantidad: 0,
+      cantidad: "",
     });
     setShowRecetaForm(false);
   };
@@ -963,8 +971,6 @@ const InventarioPage = () => {
                               stock_minimo: valorNormalizado,
                             });
                           }}
-                          min="0"
-                          step={getInputStep(ingredienteForm.unidad)}
                           inputMode={
                             esUnidadEntera(ingredienteForm.unidad)
                               ? "numeric"
@@ -1099,8 +1105,6 @@ const InventarioPage = () => {
                               stock_actual: valorNormalizado,
                             });
                           }}
-                          min="0"
-                          step={getInputStep(productoForm.unidad)}
                           inputMode={
                             esUnidadEntera(productoForm.unidad)
                               ? "numeric"
@@ -1131,8 +1135,6 @@ const InventarioPage = () => {
                               stock_minimo: valorNormalizado,
                             });
                           }}
-                          min="0"
-                          step={getInputStep(productoForm.unidad)}
                           inputMode={
                             esUnidadEntera(productoForm.unidad)
                               ? "numeric"
@@ -1158,11 +1160,12 @@ const InventarioPage = () => {
                             {(() => {
                               const ingredienteSeleccionado =
                                 obtenerIngredientePorId(item.ingrediente_id);
-                              const permiteDecimal = ingredienteSeleccionado
-                                ? !esUnidadEntera(
-                                    ingredienteSeleccionado.unidad,
-                                  )
-                                : true;
+                              const unidadIngrediente =
+                                ingredienteSeleccionado?.unidad ||
+                                item.ingrediente_unidad ||
+                                "";
+                              const permiteDecimal =
+                                !esUnidadEntera(unidadIngrediente);
 
                               return (
                                 <>
@@ -1220,8 +1223,6 @@ const InventarioPage = () => {
                                           valorNormalizado,
                                         );
                                       }}
-                                      min="0.01"
-                                      step={permiteDecimal ? "0.01" : "1"}
                                       inputMode={
                                         permiteDecimal ? "decimal" : "numeric"
                                       }
@@ -1320,6 +1321,12 @@ const InventarioPage = () => {
                             setEditingIngrediente(ingrediente);
                             setIngredienteForm({
                               ...ingrediente,
+                              stock_actual: String(
+                                ingrediente.stock_actual ?? "",
+                              ),
+                              stock_minimo: String(
+                                ingrediente.stock_minimo ?? "",
+                              ),
                               tipo_ajuste: "aumentar",
                               cantidad_ajuste: "",
                             });
@@ -1416,11 +1423,7 @@ const InventarioPage = () => {
                     <div className="ingrediente-info">
                       <div className="ingrediente-info-item">
                         <span className="ingrediente-info-label">Tipo:</span>
-                        <span className="ingrediente-info-value">
-                          {producto.tipo_inventario === "preparado"
-                            ? "Preparado"
-                            : "General"}
-                        </span>
+                        <span className="ingrediente-info-value">Preparado</span>
                       </div>
                       <div className="ingrediente-info-item">
                         <span className="ingrediente-info-label">Unidad:</span>
@@ -1448,53 +1451,6 @@ const InventarioPage = () => {
                       )}
                     </div>
 
-                    {/* Botón para preparar producto (solo para tipo 'preparado') */}
-                    {producto.tipo_inventario === "preparado" && (
-                      <div className="producto-acciones">
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => {
-                            const cantidadInput = prompt(
-                              `¿Cuántas ${producto.unidad} de ${producto.nombre} deseas preparar?`,
-                              "1",
-                            );
-
-                            if (cantidadInput == null) return;
-
-                            const cantidadNormalizada = Number(
-                              String(cantidadInput).replace(",", "."),
-                            );
-
-                            if (
-                              !Number.isFinite(cantidadNormalizada) ||
-                              cantidadNormalizada <= 0
-                            ) {
-                              alert("Ingresa una cantidad válida mayor que 0");
-                              return;
-                            }
-
-                            if (
-                              esUnidadEntera(producto.unidad) &&
-                              !Number.isInteger(cantidadNormalizada)
-                            ) {
-                              alert(
-                                "Para unidades o porciones, la cantidad debe ser entera",
-                              );
-                              return;
-                            }
-
-                            handlePrepararProducto(
-                              producto.id,
-                              cantidadNormalizada,
-                            );
-                          }}
-                          disabled={loading}
-                        >
-                          Preparar Producto
-                        </button>
-                      </div>
-                    )}
-
                     {/* Mostrar receta del producto */}
                     <div className="producto-receta">
                       <h5>📝 Receta:</h5>
@@ -1510,6 +1466,47 @@ const InventarioPage = () => {
                       ) : (
                         <p className="no-receta">⚠️ No hay receta definida</p>
                       )}
+                    </div>
+
+                    <div className="producto-acciones">
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => {
+                          const cantidadInput = prompt(
+                            `¿Qué stock final deseas establecer para ${producto.nombre} (${producto.unidad})?`,
+                            String(producto.stock_actual ?? "1"),
+                          );
+
+                          if (cantidadInput == null) return;
+
+                          const cantidadNormalizada = Number(
+                            String(cantidadInput).replace(",", "."),
+                          );
+
+                          if (
+                            !Number.isFinite(cantidadNormalizada) ||
+                            cantidadNormalizada <= 0
+                          ) {
+                            alert("Ingresa un stock final válido mayor que 0");
+                            return;
+                          }
+
+                          if (
+                            esUnidadEntera(producto.unidad) &&
+                            !Number.isInteger(cantidadNormalizada)
+                          ) {
+                            alert(
+                              "Para unidades o porciones, la cantidad debe ser entera",
+                            );
+                            return;
+                          }
+
+                          handlePrepararProducto(producto.id, cantidadNormalizada);
+                        }}
+                        disabled={loading}
+                      >
+                        Preparar
+                      </button>
                     </div>
                   </div>
                 ))
