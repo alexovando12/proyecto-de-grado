@@ -868,7 +868,7 @@ const InventarioPage = () => {
                           value={ingredienteForm.nombre}
                           onChange={(e) => {
                             let val = e.target.value;
-                            val = val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
+                            val = val.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, "");
 
                             setIngredienteForm({
                               ...ingredienteForm,

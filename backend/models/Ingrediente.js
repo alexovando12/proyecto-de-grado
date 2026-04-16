@@ -70,8 +70,8 @@ static async actualizar(id, ingrediente) {
       throw new Error('Nombre inválido');
     }
 
-    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(nombre)) {
-      throw new Error('El nombre solo puede contener letras');
+    if (!/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]+$/.test(nombre)) {
+      throw new Error('El nombre solo puede contener letras y números');
     }
 
     const ajusteNum = Number(ajuste || 0);
