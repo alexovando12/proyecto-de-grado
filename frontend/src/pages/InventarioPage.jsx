@@ -15,6 +15,9 @@ const InventarioPage = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [searchIngredientes, setSearchIngredientes] = useState("");
+  const [searchProductosPreparados, setSearchProductosPreparados] =
+    useState("");
 
   // Estados para formularios
   const [showIngredienteForm, setShowIngredienteForm] = useState(false);
@@ -381,6 +384,7 @@ const InventarioPage = () => {
       setError(null);
 
       if (
+        editingProducto &&
         !esCantidadValidaPorUnidad(
           productoForm.stock_actual,
           productoForm.unidad,
@@ -438,7 +442,7 @@ const InventarioPage = () => {
 
       const productoData = {
         ...productoForm,
-        stock_actual: Number(productoForm.stock_actual),
+        stock_actual: editingProducto ? Number(productoForm.stock_actual) : 0,
         stock_minimo: Number(productoForm.stock_minimo),
         ingredientes: ingredientesNormalizados,
       };
@@ -662,6 +666,41 @@ const InventarioPage = () => {
         return <span className="badge badge-success">Stock Normal</span>;
     }
   };
+
+  const normalizarTexto = (valor) =>
+    String(valor ?? "")
+      .toLowerCase()
+      .trim();
+
+  const ingredientesFiltrados = ingredientes.filter((ingrediente) => {
+    const textoBusqueda = normalizarTexto(searchIngredientes);
+    if (!textoBusqueda) return true;
+
+    return [ingrediente.nombre, ingrediente.unidad].some((campo) =>
+      normalizarTexto(campo).includes(textoBusqueda),
+    );
+  });
+
+  const productosPreparadosFiltrados = productosPreparados.filter(
+    (producto) => {
+      const textoBusqueda = normalizarTexto(searchProductosPreparados);
+      if (!textoBusqueda) return true;
+
+      const coincideProducto = [
+        producto.nombre,
+        producto.descripcion,
+        producto.unidad,
+      ].some((campo) => normalizarTexto(campo).includes(textoBusqueda));
+
+      const coincideIngredienteReceta =
+        Array.isArray(producto.receta) &&
+        producto.receta.some((item) =>
+          normalizarTexto(item.ingrediente_nombre).includes(textoBusqueda),
+        );
+
+      return coincideProducto || coincideIngredienteReceta;
+    },
+  );
 
   if (loading && !showIngredienteForm && !showProductoForm) {
     return (
@@ -1084,36 +1123,38 @@ const InventarioPage = () => {
                           <option value="kg">Kg</option>
                         </select>
                       </div>
-                      <div className="ingrediente-form-group">
-                        <label className="ingrediente-form-label">
-                          Stock Actual
-                        </label>
-                        <input
-                          type="text"
-                          className="ingrediente-form-input"
-                          value={productoForm.stock_actual}
-                          onChange={(e) => {
-                            const valorNormalizado = normalizarValorNumerico(
-                              e.target.value,
-                              !esUnidadEntera(productoForm.unidad),
-                            );
+                      {editingProducto && (
+                        <div className="ingrediente-form-group">
+                          <label className="ingrediente-form-label">
+                            Stock Actual
+                          </label>
+                          <input
+                            type="text"
+                            className="ingrediente-form-input"
+                            value={productoForm.stock_actual}
+                            onChange={(e) => {
+                              const valorNormalizado = normalizarValorNumerico(
+                                e.target.value,
+                                !esUnidadEntera(productoForm.unidad),
+                              );
 
-                            if (valorNormalizado === null) return;
+                              if (valorNormalizado === null) return;
 
-                            setProductoForm({
-                              ...productoForm,
-                              stock_actual: valorNormalizado,
-                            });
-                          }}
-                          inputMode={
-                            esUnidadEntera(productoForm.unidad)
-                              ? "numeric"
-                              : "decimal"
-                          }
-                          required
-                          disabled={loading}
-                        />
-                      </div>
+                              setProductoForm({
+                                ...productoForm,
+                                stock_actual: valorNormalizado,
+                              });
+                            }}
+                            inputMode={
+                              esUnidadEntera(productoForm.unidad)
+                                ? "numeric"
+                                : "decimal"
+                            }
+                            required
+                            disabled={loading}
+                          />
+                        </div>
+                      )}
                       <div className="ingrediente-form-group">
                         <label className="ingrediente-form-label">
                           Stock Mínimo
@@ -1293,7 +1334,19 @@ const InventarioPage = () => {
 
           {/* Contenido de la pestaña activa */}
           {activeTab === "ingredientes" && (
-            <div className="inventario-grid">
+            <>
+              <div className="inventario-search-container">
+                <input
+                  type="text"
+                  className="inventario-search-input"
+                  placeholder="Buscar ingrediente por nombre o unidad..."
+                  value={searchIngredientes}
+                  onChange={(e) => setSearchIngredientes(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="inventario-grid">
               {ingredientes.length === 0 ? (
                 <div className="empty-state">
                   <p>No hay ingredientes registrados</p>
@@ -1304,8 +1357,12 @@ const InventarioPage = () => {
                     Agregar Ingrediente
                   </button>
                 </div>
+              ) : ingredientesFiltrados.length === 0 ? (
+                <div className="empty-state">
+                  <p>No se encontraron ingredientes con ese texto</p>
+                </div>
               ) : (
-                ingredientes.map((ingrediente) => (
+                ingredientesFiltrados.map((ingrediente) => (
                   <div
                     key={ingrediente.id}
                     className={`ingrediente-card ${getStockClass(getStockStatus(ingrediente.stock_actual, ingrediente.stock_minimo))}`}
@@ -1378,11 +1435,26 @@ const InventarioPage = () => {
                   </div>
                 ))
               )}
-            </div>
+              </div>
+            </>
           )}
 
           {activeTab === "productos-preparados" && (
-            <div className="inventario-grid">
+            <>
+              <div className="inventario-search-container">
+                <input
+                  type="text"
+                  className="inventario-search-input"
+                  placeholder="Buscar producto preparado, descripcion o ingrediente..."
+                  value={searchProductosPreparados}
+                  onChange={(e) =>
+                    setSearchProductosPreparados(e.target.value)
+                  }
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="inventario-grid">
               {productosPreparados.length === 0 ? (
                 <div className="empty-state">
                   <p>No hay productos preparados registrados</p>
@@ -1393,8 +1465,12 @@ const InventarioPage = () => {
                     Agregar Producto Preparado
                   </button>
                 </div>
+              ) : productosPreparadosFiltrados.length === 0 ? (
+                <div className="empty-state">
+                  <p>No se encontraron productos preparados con ese texto</p>
+                </div>
               ) : (
-                productosPreparados.map((producto) => (
+                productosPreparadosFiltrados.map((producto) => (
                   <div
                     key={producto.id}
                     className={`ingrediente-card ${getStockClass(getStockStatus(producto.stock_actual, producto.stock_minimo))}`}
@@ -1423,7 +1499,9 @@ const InventarioPage = () => {
                     <div className="ingrediente-info">
                       <div className="ingrediente-info-item">
                         <span className="ingrediente-info-label">Tipo:</span>
-                        <span className="ingrediente-info-value">Preparado</span>
+                        <span className="ingrediente-info-value">
+                          Preparado
+                        </span>
                       </div>
                       <div className="ingrediente-info-item">
                         <span className="ingrediente-info-label">Unidad:</span>
@@ -1501,7 +1579,10 @@ const InventarioPage = () => {
                             return;
                           }
 
-                          handlePrepararProducto(producto.id, cantidadNormalizada);
+                          handlePrepararProducto(
+                            producto.id,
+                            cantidadNormalizada,
+                          );
                         }}
                         disabled={loading}
                       >
@@ -1511,7 +1592,8 @@ const InventarioPage = () => {
                   </div>
                 ))
               )}
-            </div>
+              </div>
+            </>
           )}
 
           {activeTab === "movimientos" && (

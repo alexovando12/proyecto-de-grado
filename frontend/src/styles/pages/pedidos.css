@@ -194,6 +194,30 @@
 
 .btn:hover { opacity: 0.9; }
 
+.producto-card-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
+.producto-disponibilidad {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.producto-disponibilidad-ok {
+  color: #198754;
+}
+
+.producto-disponibilidad-agotado {
+  color: #dc3545;
+}
+
+.producto-disponibilidad-pendiente {
+  color: #6c757d;
+}
+
 /* ======= Badges de estado ======= */
 .badge-warning { background-color: #ffc107; color: #212529; }
 .badge-info    { background-color: #17a2b8; color: white; }
@@ -205,6 +229,132 @@
 /* ======= Responsive ======= */
 @media (max-width: 768px) {
   .pedidos-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pedido-form-layout {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.pedido-form-menu-column,
+.pedido-form-resumen-column {
+  min-width: 0;
+}
+
+.pedido-menu-loading {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  color: #3730a3;
+  font-weight: 600;
+}
+
+.pedido-resumen-vacio {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.pedido-item-lock-hint {
+  display: inline-block;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0d6efd;
+}
+
+@media (max-width: 992px) {
+  .pedido-form-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pedido-modal-content.modal-content.modal-lg {
+  width: min(1320px, 96vw);
+}
+
+.pedido-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: -0.15rem 0 0.8rem;
+  padding: 0.15rem 0 0.75rem;
+  background: #fff;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.pedido-modal-header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.pedido-modal-close {
+  flex-shrink: 0;
+}
+
+.pedido-form .productos-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.pedido-form .producto-card {
+  padding: 0.7rem 0.75rem;
+  border-radius: 10px;
+}
+
+.pedido-form .producto-card::before {
+  width: 3px;
+}
+
+.pedido-form .producto-nombre {
+  font-size: 0.95rem;
+  margin-bottom: 0.1rem;
+}
+
+.pedido-form .producto-precio {
+  font-size: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.pedido-form .producto-descripcion {
+  font-size: 0.82rem;
+  margin-bottom: 0.35rem;
+  min-height: 2.2em;
+  line-height: 1.1;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.pedido-form .producto-disponibilidad {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 1199px) {
+  .pedido-form .productos-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .pedido-modal-content.modal-content.modal-lg {
+    width: min(96vw, 100%);
+  }
+
+  .pedido-modal-header h2 {
+    font-size: 1.1rem;
+  }
+
+  .pedido-form .productos-grid {
     grid-template-columns: 1fr;
   }
 }

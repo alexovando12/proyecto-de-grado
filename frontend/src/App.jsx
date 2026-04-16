@@ -13,6 +13,7 @@ import PedidosPage from "./pages/PedidosPage.jsx";
 import CocinaPage from "./pages/CocinaPage.jsx";
 import InventarioPage from "./pages/InventarioPage.jsx";
 import ReportesPage from "./pages/ReportesPage.jsx";
+import UsuariosPage from "./pages/UsuariosPage.jsx";
 import Header from "./components/layout/Header.jsx";
 
 const ROLE_DEFAULT_PATH = {
@@ -152,6 +153,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["admin"]}>
                   <ReportesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/usuarios"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <UsuariosPage />
                 </ProtectedRoute>
               }
             />

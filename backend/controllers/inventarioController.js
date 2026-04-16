@@ -4,6 +4,43 @@ const ProductoPreparado = require("../models/ProductoPreparado");
 const Receta = require("../models/Receta");
 const MovimientoInventario = require("../models/MovimientoInventario");
 
+const UNIQUE_NAME_ERRORS = {
+  uq_ingredientes_nombre_ci:
+    "Ya existe un ingrediente con ese nombre. Usa un nombre diferente.",
+  uq_productos_preparados_nombre_ci:
+    "Ya existe un plato preparado con ese nombre. Usa un nombre diferente.",
+  uq_productos_nombre_ci:
+    "Ya existe un producto con ese nombre. Usa un nombre diferente.",
+};
+
+const getUniqueNameErrorMessage = (error) => {
+  if (!error || error.code !== "23505") return null;
+
+  const constraint = String(error.constraint || "").toLowerCase();
+
+  for (const [key, message] of Object.entries(UNIQUE_NAME_ERRORS)) {
+    if (constraint.includes(key)) {
+      return message;
+    }
+  }
+
+  const detail = String(error.detail || "").toLowerCase();
+
+  if (detail.includes("ingredientes")) {
+    return UNIQUE_NAME_ERRORS.uq_ingredientes_nombre_ci;
+  }
+
+  if (detail.includes("productos_preparados")) {
+    return UNIQUE_NAME_ERRORS.uq_productos_preparados_nombre_ci;
+  }
+
+  if (detail.includes("productos")) {
+    return UNIQUE_NAME_ERRORS.uq_productos_nombre_ci;
+  }
+
+  return "Ya existe un registro con ese nombre. Usa un nombre diferente.";
+};
+
 // =========================
 // CRUD de Ingredientes
 // =========================
@@ -25,6 +62,11 @@ exports.crearIngrediente = async (req, res) => {
     const ingrediente = await Ingrediente.crear(nuevo);
     res.status(201).json(ingrediente);
   } catch (error) {
+    const uniqueErrorMessage = getUniqueNameErrorMessage(error);
+    if (uniqueErrorMessage) {
+      return res.status(409).json({ error: uniqueErrorMessage });
+    }
+
     console.error("❌ Error al crear ingrediente:", error);
     res.status(500).json({ error: error.message });
   }
@@ -36,6 +78,11 @@ exports.actualizarIngrediente = async (req, res) => {
     const ingrediente = await Ingrediente.actualizar(id, req.body);
     res.json(ingrediente);
   } catch (error) {
+    const uniqueErrorMessage = getUniqueNameErrorMessage(error);
+    if (uniqueErrorMessage) {
+      return res.status(409).json({ error: uniqueErrorMessage });
+    }
+
     res.status(500).json({ error: error.message });
   }
 };
@@ -176,6 +223,7 @@ exports.crearProductoPreparado = async (req, res) => {
       stock_minimo,
       ingredientes,
     } = req.body;
+    const nombreNormalizado = String(nombre || "").trim();
 
     // 🧩 Validaciones básicas
     if (!Array.isArray(ingredientes) || ingredientes.length === 0) {
@@ -190,7 +238,7 @@ exports.crearProductoPreparado = async (req, res) => {
       `INSERT INTO productos_preparados (nombre, descripcion, unidad, stock_actual, stock_minimo)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id, stock_actual`,
-      [nombre, descripcion, unidad, 0, stock_minimo],
+      [nombreNormalizado, descripcion, unidad, 0, stock_minimo],
     );
 
     const productoPreparadoId = result.rows[0].id;
@@ -232,6 +280,11 @@ exports.crearProductoPreparado = async (req, res) => {
     });
   } catch (error) {
     await client.query("ROLLBACK");
+    const uniqueErrorMessage = getUniqueNameErrorMessage(error);
+    if (uniqueErrorMessage) {
+      return res.status(409).json({ error: uniqueErrorMessage });
+    }
+
     console.error("❌ Error al crear producto preparado:", error);
     res.status(500).json({ error: error.message });
   } finally {
@@ -257,6 +310,7 @@ exports.actualizarProductoPreparado = async (req, res) => {
       stock_minimo,
       ingredientes = [],
     } = req.body;
+    const nombreNormalizado = String(nombre || "").trim();
 
     // 1. Obtener receta actual
     const recetaActualResult = await client.query(
@@ -387,7 +441,7 @@ exports.actualizarProductoPreparado = async (req, res) => {
            stock_minimo = $5
        WHERE id = $6
        RETURNING *`,
-      [nombre, descripcion, unidad, stock_actual, stock_minimo, id],
+      [nombreNormalizado, descripcion, unidad, stock_actual, stock_minimo, id],
     );
 
     if (productoResult.rowCount === 0) {
@@ -416,6 +470,11 @@ exports.actualizarProductoPreparado = async (req, res) => {
     });
   } catch (error) {
     await client.query("ROLLBACK");
+    const uniqueErrorMessage = getUniqueNameErrorMessage(error);
+    if (uniqueErrorMessage) {
+      return res.status(409).json({ error: uniqueErrorMessage });
+    }
+
     console.error("❌ Error al actualizar producto preparado:", error);
     res.status(500).json({ error: error.message });
   } finally {

@@ -1,8 +1,8 @@
-import api from './api.js';
+import api from "./api.js";
 
 export const productoService = {
   obtenerTodos: async () => {
-    const response = await api.get('/productos');
+    const response = await api.get("/productos");
     return response.data;
   },
 
@@ -17,7 +17,7 @@ export const productoService = {
   },
 
   crear: async (producto) => {
-    const response = await api.post('/productos', producto);
+    const response = await api.post("/productos", producto);
     return response.data;
   },
 
@@ -37,7 +37,9 @@ export const productoService = {
   },
 
   buscar: async (termino) => {
-    const response = await api.get(`/productos/buscar?termino=${encodeURIComponent(termino)}`);
+    const response = await api.get(
+      `/productos/buscar?termino=${encodeURIComponent(termino)}`,
+    );
     return response.data;
-  }
+  },
 };

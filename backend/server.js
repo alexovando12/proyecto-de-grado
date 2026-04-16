@@ -9,6 +9,7 @@ const productoRoutes = require('./routes/productoRoutes');
 const pedidoRoutes = require('./routes/pedidoRoutes');
 const reporteRoutes = require('./routes/reporteRoutes');
 const inventarioRoutes = require('./routes/inventarioRoutes');
+const usuarioRoutes = require('./routes/usuarioRoutes');
 const app = express();
 
 // =======================
@@ -67,6 +68,7 @@ app.use('/api/productos', productoRoutes);
 app.use('/api/pedidos', pedidoRoutes);
 app.use('/api/reportes', reporteRoutes);
 app.use('/api/inventario', inventarioRoutes);
+app.use('/api/usuarios', usuarioRoutes);
 // =======================
 // Manejo de errores
 // =======================

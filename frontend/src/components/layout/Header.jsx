@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 const ROLE_MODULES = {
   admin: [
     { to: "/reportes", label: "Reportes" },
+    { to: "/usuarios", label: "Usuarios" },
     { to: "/mesas", label: "Mesas" },
     { to: "/productos", label: "Productos" },
     { to: "/pedidos", label: "Pedidos" },

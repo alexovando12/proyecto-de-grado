@@ -23,6 +23,26 @@ const ProductosPage = () => {
   const [categoriaFiltro, setCategoriaFiltro] = useState("todos");
   const [filteredProductos, setFilteredProductos] = useState([]);
 
+  const normalizarPrecioInput = (rawValue) => {
+    const limpio = String(rawValue ?? "")
+      .replace(/\s+/g, "")
+      .replace(/,/g, ".")
+      .replace(/[^\d.]/g, "");
+
+    if (!limpio) return "";
+
+    const [parteEntera = "", ...decimales] = limpio.split(".");
+    if (decimales.length === 0) return parteEntera;
+
+    return `${parteEntera}.${decimales.join("")}`;
+  };
+
+  const parsearPrecio = (value) => {
+    const normalizado = String(value ?? "").trim().replace(/,/g, ".");
+    if (!normalizado) return NaN;
+    return Number(normalizado);
+  };
+
   const closeProductoModal = () => {
     setShowForm(false);
     setEditingProducto(null);
@@ -156,10 +176,16 @@ const ProductosPage = () => {
         return;
       }
 
+      const precioNumerico = parsearPrecio(formData.precio);
+      if (!Number.isFinite(precioNumerico) || precioNumerico <= 0) {
+        alert("Ingresa un precio válido mayor a 0");
+        return;
+      }
+
       const productoData = {
         nombre: formData.nombre.trim(),
         descripcion: formData.descripcion,
-        precio: parseFloat(formData.precio),
+        precio: precioNumerico,
         categoria: formData.categoria,
         tipo_inventario: formData.tipo_inventario,
         producto_preparado_id:
@@ -351,14 +377,17 @@ const ProductosPage = () => {
                     <div className="producto-form-group">
                       <label className="producto-form-label">Precio</label>
                       <input
-                        type="number"
+                        type="text"
                         className="producto-form-input"
                         value={formData.precio}
                         onChange={(e) =>
-                          setFormData({ ...formData, precio: e.target.value })
+                          setFormData({
+                            ...formData,
+                            precio: normalizarPrecioInput(e.target.value),
+                          })
                         }
-                        min="0"
-                        step="0.01"
+                        inputMode="decimal"
+                        placeholder="Ej: 12.50"
                         required
                       />
                     </div>

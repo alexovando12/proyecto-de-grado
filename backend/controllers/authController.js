@@ -36,6 +36,11 @@ exports.login = async (req, res) => {
       email: usuario.email,
       rol: usuario.rol
     });
+
+    if (usuario.estado === false) {
+      console.log('❌ Usuario inactivo');
+      return res.status(401).json({ error: 'Usuario inactivo' });
+    }
     
     // Verificar la contraseña
     console.log('🔐 Verificando contraseña...');

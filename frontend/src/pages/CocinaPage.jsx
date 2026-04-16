@@ -20,6 +20,7 @@ const CocinaPage = () => {
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState("preparando"); // 👈 Directo a "preparando"
   const [fechaFiltro, setFechaFiltro] = useState(getTodayBoliviaDate());
+  const [pedidoLoadingId, setPedidoLoadingId] = useState(null);
 
   const sortByFechaActualizacionAsc = (lista) => {
     return [...(Array.isArray(lista) ? lista : [])].sort((a, b) => {
@@ -93,6 +94,7 @@ const CocinaPage = () => {
 
   const actualizarEstado = async (id, nuevoEstado) => {
     try {
+      setPedidoLoadingId(Number(id));
       const pedidoActualizado = await pedidoService.actualizarEstado(
         id,
         nuevoEstado,
@@ -121,6 +123,8 @@ const CocinaPage = () => {
       });
     } catch (error) {
       console.error("Error al actualizar estado:", error);
+    } finally {
+      setPedidoLoadingId(null);
     }
   };
 
@@ -213,8 +217,11 @@ const CocinaPage = () => {
                     <button
                       className="btn btn-success"
                       onClick={() => actualizarEstado(pedido.id, "listo")}
+                      disabled={pedidoLoadingId === pedido.id}
                     >
-                      Marcar como Listo
+                      {pedidoLoadingId === pedido.id
+                        ? "Cargando..."
+                        : "Marcar como Listo"}
                     </button>
                   )}
                 </div>

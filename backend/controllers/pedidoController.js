@@ -373,6 +373,36 @@ exports.actualizarEstadoPedido = async (req, res) => {
       .toLowerCase()
       .trim();
 
+    if (estadoDestino === "cancelado") {
+      const estadosPermitidosCancelar = ["listo", "pendiente", "preparando"];
+
+      if (!estadosPermitidosCancelar.includes(estadoActual)) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          error:
+            "Solo se puede cancelar pedidos en estado listo o pendiente",
+        });
+      }
+
+      const detallesResult = await client.query(
+        `SELECT producto_id, cantidad FROM detalles_pedido WHERE pedido_id = $1 FOR UPDATE`,
+        [id],
+      );
+
+      for (const detalle of detallesResult.rows) {
+        await devolverStockProducto(
+          client,
+          Number(detalle.producto_id),
+          Number(detalle.cantidad),
+        );
+      }
+
+      await client.query(
+        `UPDATE detalles_pedido SET estado = 'cancelado' WHERE pedido_id = $1`,
+        [id],
+      );
+    }
+
     // Al marcar el pedido como listo, todas sus lineas pasan a listo
     if (estadoDestino === "listo") {
       await client.query(
@@ -431,7 +461,29 @@ exports.actualizarDetallesPedido = async (req, res) => {
     const { id } = req.params;
     const nuevosDetalles = req.body.detalles; // lista completa desde frontend
 
+    if (!Array.isArray(nuevosDetalles) || nuevosDetalles.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "El pedido debe tener al menos un detalle" });
+    }
+
     await client.query("BEGIN");
+
+    const pedidoResult = await client.query(
+      `SELECT estado FROM pedidos WHERE id = $1 FOR UPDATE`,
+      [id],
+    );
+
+    if (pedidoResult.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    const estadoPedidoActual = String(pedidoResult.rows[0].estado || "")
+      .toLowerCase()
+      .trim();
+    const bloquearDetallesListos = estadoPedidoActual === "entregado";
+    let huboCambios = false;
 
     // Obtener detalles actuales
     const detallesActuales = await DetallePedido.obtenerPorPedido(id);
@@ -445,11 +497,23 @@ exports.actualizarDetallesPedido = async (req, res) => {
     // 1. Eliminar productos que ya no están
     for (const [producto_id, det] of actualesMap.entries()) {
       if (!nuevosMap.has(producto_id)) {
+        if (
+          bloquearDetallesListos &&
+          String(det.estado || "").toLowerCase() === "listo"
+        ) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            error:
+              "No puedes quitar un detalle en estado listo cuando el pedido está entregado.",
+          });
+        }
+
         // devolver stock
         await devolverStockProducto(client, producto_id, det.cantidad);
         await client.query(`DELETE FROM detalles_pedido WHERE id = $1`, [
           det.id,
         ]);
+        huboCambios = true;
       }
     }
 
@@ -458,7 +522,40 @@ exports.actualizarDetallesPedido = async (req, res) => {
       const actual = actualesMap.get(det.producto_id);
 
       if (actual) {
-        const diferencia = det.cantidad - actual.cantidad;
+        const cantidadNueva = Number(det.cantidad);
+        const cantidadActual = Number(actual.cantidad);
+        const precioNuevo = Number(det.precio);
+        const notasNueva = String(det.notas ?? "");
+        const notasActual = String(actual.notas ?? "");
+
+        if (!Number.isFinite(cantidadNueva) || cantidadNueva <= 0) {
+          await client.query("ROLLBACK");
+          return res
+            .status(400)
+            .json({ error: "Cantidad inválida en los detalles del pedido" });
+        }
+
+        if (
+          bloquearDetallesListos &&
+          String(actual.estado || "").toLowerCase() === "listo" &&
+          cantidadNueva < cantidadActual
+        ) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            error:
+              "No puedes disminuir un detalle en estado listo cuando el pedido está entregado.",
+          });
+        }
+
+        const huboCambioDetalle =
+          cantidadNueva !== cantidadActual ||
+          notasNueva !== notasActual;
+
+        if (!huboCambioDetalle) {
+          continue;
+        }
+
+        const diferencia = cantidadNueva - cantidadActual;
 
         if (diferencia > 0) {
           await descontarStockProducto(client, det.producto_id, diferencia);
@@ -478,19 +575,28 @@ exports.actualizarDetallesPedido = async (req, res) => {
                estado = $4
            WHERE id = $5`,
           [
-            det.cantidad,
-            det.notas,
-            det.precio,
-            diferencia !== 0 ? "actualizado" : actual.estado,
+            cantidadNueva,
+            notasNueva,
+            precioNuevo,
+            "actualizado",
             actual.id,
           ],
         );
+
+        huboCambios = true;
       }
     }
 
     // 3. Agregar productos nuevos
     for (const det of nuevosDetalles) {
       if (!actualesMap.has(det.producto_id)) {
+        if (!Number.isFinite(Number(det.cantidad)) || Number(det.cantidad) <= 0) {
+          await client.query("ROLLBACK");
+          return res
+            .status(400)
+            .json({ error: "Cantidad inválida en los detalles del pedido" });
+        }
+
         await descontarStockProducto(client, det.producto_id, det.cantidad);
 
         await client.query(
@@ -498,27 +604,35 @@ exports.actualizarDetallesPedido = async (req, res) => {
            VALUES ($1, $2, $3, $4, $5, 'nuevo')`,
           [id, det.producto_id, det.cantidad, det.notas, det.precio],
         );
+
+        huboCambios = true;
       }
     }
 
     // 4. Recalcular total
-    const total = nuevosDetalles.reduce(
-      (acc, d) => acc + d.precio * d.cantidad,
-      0,
+    const totalResult = await client.query(
+      `SELECT COALESCE(SUM(cantidad * precio), 0) AS total
+       FROM detalles_pedido
+       WHERE pedido_id = $1`,
+      [id],
     );
+    const total = Number(totalResult.rows[0]?.total ?? 0);
+
     await client.query(`UPDATE pedidos SET total = $1 WHERE id = $2`, [
       total,
       id,
     ]);
 
-    // Si se edita el pedido, su estado general vuelve a pendiente
-    await client.query(
-      `UPDATE pedidos
-       SET estado = 'preparando',
-           fecha_actualizacion = NOW()
-       WHERE id = $1`,
-      [id],
-    );
+    // Solo pasamos a preparando si efectivamente cambió algo.
+    if (huboCambios) {
+      await client.query(
+        `UPDATE pedidos
+         SET estado = 'preparando',
+             fecha_actualizacion = NOW()
+         WHERE id = $1`,
+        [id],
+      );
+    }
 
     await client.query("COMMIT");
 

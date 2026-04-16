@@ -28,8 +28,19 @@ const getTodayBoliviaDate = () =>
     timeZone: "America/La_Paz",
   }).format(new Date());
 
+const FINAL_STATES = new Set(["cerrado", "cancelado"]);
+
 const sortByFechaActualizacionAsc = (lista) =>
   [...(Array.isArray(lista) ? lista : [])].sort((a, b) => {
+    const estadoA = String(a?.estado || "").toLowerCase();
+    const estadoB = String(b?.estado || "").toLowerCase();
+    const aEsFinal = FINAL_STATES.has(estadoA);
+    const bEsFinal = FINAL_STATES.has(estadoB);
+
+    if (aEsFinal !== bEsFinal) {
+      return aEsFinal ? 1 : -1;
+    }
+
     const fa = new Date(a?.fecha_actualizacion || 0).getTime();
     const fb = new Date(b?.fecha_actualizacion || 0).getTime();
     return fa - fb;
@@ -70,6 +81,8 @@ const PedidosPage = () => {
   // 🔥 Modal para edición
   const [showEditForm, setShowEditForm] = useState(false);
   const [pedidoEditando, setPedidoEditando] = useState(null);
+  const [pedidoAccionLoadingId, setPedidoAccionLoadingId] = useState(null);
+  const [pedidoAccionLoadingTipo, setPedidoAccionLoadingTipo] = useState("");
 
   const closeNuevoPedidoModal = () => {
     setShowForm(false);
@@ -150,9 +163,17 @@ const PedidosPage = () => {
   };
 
   const actualizarEstadoPedido = async (id, estado) => {
+    const pedidoId = Number(id);
     try {
-      await pedidoService.actualizarEstado(Number(id), estado);
+      setPedidoAccionLoadingId(pedidoId);
+      setPedidoAccionLoadingTipo(estado);
+
+      await pedidoService.actualizarEstado(pedidoId, estado);
       await cargarPedidos();
+
+      if (estado === "cancelado") {
+        window.dispatchEvent(new Event("mesa-status-changed"));
+      }
     } catch (error) {
       const msg =
         error?.response?.data?.message ||
@@ -160,6 +181,28 @@ const PedidosPage = () => {
         error.message;
       console.error("Error al actualizar estado:", msg);
       alert(`No se pudo actualizar el estado: ${msg}`);
+    } finally {
+      setPedidoAccionLoadingId(null);
+      setPedidoAccionLoadingTipo("");
+    }
+  };
+
+  const cancelarPedido = async (pedido) => {
+    try {
+      const confirmacion = window.confirm(
+        `¿Cancelar el pedido #${pedido.id}? Se devolverá el stock consumido.`,
+      );
+
+      if (!confirmacion) return;
+
+      await actualizarEstadoPedido(pedido.id, "cancelado");
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        error?.response?.data ||
+        error.message;
+      console.error("Error al cancelar pedido:", msg);
+      alert(`No se pudo cancelar el pedido: ${msg}`);
     }
   };
 
@@ -189,12 +232,16 @@ const PedidosPage = () => {
 
   const getEstadoClass = (estado) => {
     switch (estado) {
+      case "pendiente":
+        return "badge-warning";
       case "preparando":
         return "badge-primary";
       case "listo":
         return "badge-success";
       case "entregado":
         return "badge-secondary";
+      case "cancelado":
+        return "badge-danger";
       case "cerrado":
         return "badge-dark";
       default:
@@ -204,12 +251,16 @@ const PedidosPage = () => {
 
   const getEstadoText = (estado) => {
     switch (estado) {
+      case "pendiente":
+        return "Pendiente";
       case "preparando":
         return "Preparando";
       case "listo":
         return "Listo";
       case "entregado":
         return "Entregado";
+      case "cancelado":
+        return "Cancelado";
       case "cerrado":
         return "Cerrado";
       default:
@@ -247,18 +298,21 @@ const PedidosPage = () => {
           {/* Formulario para NUEVO pedido */}
           {showForm && (
             <div className="modal-overlay">
-              <div className="modal-content modal-lg">
-                <h2>Nuevo Pedido</h2>
+              <div className="modal-content modal-lg pedido-modal-content">
+                <div className="pedido-modal-header">
+                  <h2>Nuevo Pedido</h2>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm pedido-modal-close"
+                    onClick={closeNuevoPedidoModal}
+                  >
+                    Cerrar
+                  </button>
+                </div>
                 <PedidoForm
                   onPedidoCreado={handlePedidoCreado}
                   mesaSeleccionada={selectedMesa}
                 />
-                <button
-                  className="btn btn-secondary mt-2"
-                  onClick={closeNuevoPedidoModal}
-                >
-                  Cerrar
-                </button>
               </div>
             </div>
           )}
@@ -266,8 +320,17 @@ const PedidosPage = () => {
           {/* Modal para EDITAR pedido */}
           {showEditForm && (
             <div className="modal-overlay">
-              <div className="modal-content modal-lg">
-                <h2>Editar Pedido #{pedidoEditando?.id}</h2>
+              <div className="modal-content modal-lg pedido-modal-content">
+                <div className="pedido-modal-header">
+                  <h2>Editar Pedido #{pedidoEditando?.id}</h2>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm pedido-modal-close"
+                    onClick={closeEditarPedidoModal}
+                  >
+                    Cerrar
+                  </button>
+                </div>
                 <PedidoForm
                   pedidoExistente={pedidoEditando}
                   onPedidoCreado={() => {
@@ -275,12 +338,6 @@ const PedidosPage = () => {
                     cargarPedidos();
                   }}
                 />
-                <button
-                  className="btn btn-secondary mt-2"
-                  onClick={closeEditarPedidoModal}
-                >
-                  Cerrar
-                </button>
               </div>
             </div>
           )}
@@ -301,9 +358,11 @@ const PedidosPage = () => {
                 onChange={(e) => setFiltroEstado(e.target.value)}
               >
                 <option value="">Todos</option>
+                <option value="pendiente">Pendiente</option>
                 <option value="preparando">Preparando</option>
                 <option value="listo">Listo</option>
                 <option value="entregado">Entregado</option>
+                <option value="cancelado">Cancelado</option>
                 <option value="cerrado">Cerrado</option>
               </select>
               <input
@@ -364,10 +423,12 @@ const PedidosPage = () => {
                     <strong>Total: {toMoney(pedido.total)}</strong>
                   </div>
                   <div className="pedido-card-actions">
-                    {pedido.estado !== "cerrado" && (
+                    {pedido.estado !== "cerrado" &&
+                      pedido.estado !== "cancelado" && (
                       <button
                         className="btn btn-warning btn-sm"
                         onClick={() => editarPedido(pedido)}
+                        disabled={pedidoAccionLoadingId === pedido.id}
                       >
                         Editar
                       </button>
@@ -379,8 +440,27 @@ const PedidosPage = () => {
                         onClick={() =>
                           actualizarEstadoPedido(pedido.id, "entregado")
                         }
+                        disabled={pedidoAccionLoadingId === pedido.id}
                       >
-                        Entregar
+                        {pedidoAccionLoadingId === pedido.id &&
+                        pedidoAccionLoadingTipo === "entregado"
+                          ? "Cargando..."
+                          : "Entregar"}
+                      </button>
+                    )}
+
+                    {(pedido.estado === "listo" ||
+                      pedido.estado === "pendiente" ||
+                      pedido.estado === "preparando") && (
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => cancelarPedido(pedido)}
+                        disabled={pedidoAccionLoadingId === pedido.id}
+                      >
+                        {pedidoAccionLoadingId === pedido.id &&
+                        pedidoAccionLoadingTipo === "cancelado"
+                          ? "Cargando..."
+                          : "Cancelar"}
                       </button>
                     )}
 

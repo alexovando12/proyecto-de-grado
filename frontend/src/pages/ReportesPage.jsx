@@ -29,9 +29,6 @@ const ReportesPage = () => {
         case "detalle":
           data = await reporteService.generarReporteDetallePedidos(filtros);
           break;
-        case "movimientos":
-          data = await reporteService.generarReporteMovimientos(filtros);
-          break;
         default:
           data = [];
       }
@@ -64,10 +61,13 @@ const ReportesPage = () => {
   };
 
   const formatearMoneda = (valor) => {
-    return new Intl.NumberFormat("es-MX", {
-      style: "currency",
-      currency: "MXN",
-    }).format(valor);
+    const monto = Number(valor ?? 0);
+    const montoSeguro = Number.isFinite(monto) ? monto : 0;
+
+    return `Bs. ${new Intl.NumberFormat("es-BO", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(montoSeguro)}`;
   };
 
   const getKPIs = () => {
@@ -219,39 +219,6 @@ const ReportesPage = () => {
     </div>
   );
 
-  const renderTablaMovimientos = () => (
-    <div className="reporte-table-container">
-      <table className="reporte-table">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Tipo</th>
-            <th>Total Movimientos</th>
-            <th>Total Cantidad</th>
-            <th>Valor Económico</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reporteData.map((item, index) => (
-            <tr key={index}>
-              <td>{new Date(item.fecha).toLocaleDateString()}</td>
-              <td>
-                <span
-                  className={`reporte-badge ${item.tipo === "entrada" ? "success" : "warning"}`}
-                >
-                  {item.tipo}
-                </span>
-              </td>
-              <td>{item.total_movimientos}</td>
-              <td>{item.total_cantidad}</td>
-              <td>{formatearMoneda(item.valor_economico)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-
   return (
     <div className="reportes-container">
       <main className="reportes-content">
@@ -284,18 +251,10 @@ const ReportesPage = () => {
             >
               Detalle Pedidos
             </button>
-            <button
-              className={`reportes-tab ${activeTab === "movimientos" ? "active" : ""}`}
-              onClick={() => setActiveTab("movimientos")}
-            >
-              Movimientos
-            </button>
           </div>
 
           {/* Filtros */}
-          {(activeTab === "ventas" ||
-            activeTab === "productos" ||
-            activeTab === "movimientos") && (
+          {(activeTab === "ventas" || activeTab === "productos") && (
             <div className="reportes-filtros">
               <h3 className="reportes-filtros-title">Filtros</h3>
               <div className="reportes-filtros-grid">
@@ -362,7 +321,6 @@ const ReportesPage = () => {
           {activeTab === "ventas" && renderTablaVentas()}
           {activeTab === "productos" && renderTablaProductos()}
           {activeTab === "inventario" && renderTablaInventario()}
-          {activeTab === "movimientos" && renderTablaMovimientos()}
           {activeTab === "detalle" && renderTablaDetalle()}
           {/* Acciones */}
           <div className="reporte-acciones">
