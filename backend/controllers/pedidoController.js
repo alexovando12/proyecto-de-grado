@@ -210,7 +210,7 @@ exports.crearPedido = async (req, res) => {
     const pedidoExistente = await pool.query(
       `SELECT * FROM pedidos 
        WHERE mesa_id = $1 
-       AND estado IN ('pendiente','confirmado','preparando')`,
+       AND estado IN ('pendiente','confirmado','preparando','listo','entregado')`,
       [mesaId],
     );
 
@@ -257,6 +257,12 @@ exports.crearPedido = async (req, res) => {
       total,
       pedido.id,
     ]);
+
+    // Al crear pedido (nace en "preparando"), la mesa debe quedar ocupada.
+    await client.query(`UPDATE mesas SET estado = 'ocupada' WHERE id = $1`, [
+      mesaId,
+    ]);
+
     await client.query("COMMIT");
 
     const pedidoCompleto = await Pedido.obtenerPorIdConDetalles(pedido.id);
@@ -360,7 +366,7 @@ exports.actualizarEstadoPedido = async (req, res) => {
     await client.query("BEGIN");
 
     const pedidoActualResult = await client.query(
-      `SELECT estado FROM pedidos WHERE id = $1 FOR UPDATE`,
+      `SELECT estado, mesa_id FROM pedidos WHERE id = $1 FOR UPDATE`,
       [id],
     );
 
@@ -372,6 +378,7 @@ exports.actualizarEstadoPedido = async (req, res) => {
     const estadoActual = String(pedidoActualResult.rows[0].estado || "")
       .toLowerCase()
       .trim();
+    const mesaIdPedido = Number(pedidoActualResult.rows[0].mesa_id);
 
     if (estadoDestino === "cancelado") {
       const estadosPermitidosCancelar = ["listo", "pendiente", "preparando"];
@@ -379,8 +386,7 @@ exports.actualizarEstadoPedido = async (req, res) => {
       if (!estadosPermitidosCancelar.includes(estadoActual)) {
         await client.query("ROLLBACK");
         return res.status(400).json({
-          error:
-            "Solo se puede cancelar pedidos en estado listo o pendiente",
+          error: "Solo se puede cancelar pedidos en estado listo o pendiente",
         });
       }
 
@@ -401,6 +407,13 @@ exports.actualizarEstadoPedido = async (req, res) => {
         `UPDATE detalles_pedido SET estado = 'cancelado' WHERE pedido_id = $1`,
         [id],
       );
+
+      // En cancelación se libera la mesa.
+      if (Number.isFinite(mesaIdPedido)) {
+        await client.query(`UPDATE mesas SET estado = 'disponible' WHERE id = $1`, [
+          mesaIdPedido,
+        ]);
+      }
     }
 
     // Al marcar el pedido como listo, todas sus lineas pasan a listo
@@ -548,8 +561,7 @@ exports.actualizarDetallesPedido = async (req, res) => {
         }
 
         const huboCambioDetalle =
-          cantidadNueva !== cantidadActual ||
-          notasNueva !== notasActual;
+          cantidadNueva !== cantidadActual || notasNueva !== notasActual;
 
         if (!huboCambioDetalle) {
           continue;
@@ -574,13 +586,7 @@ exports.actualizarDetallesPedido = async (req, res) => {
                precio = $3,
                estado = $4
            WHERE id = $5`,
-          [
-            cantidadNueva,
-            notasNueva,
-            precioNuevo,
-            "actualizado",
-            actual.id,
-          ],
+          [cantidadNueva, notasNueva, precioNuevo, "actualizado", actual.id],
         );
 
         huboCambios = true;
@@ -590,7 +596,10 @@ exports.actualizarDetallesPedido = async (req, res) => {
     // 3. Agregar productos nuevos
     for (const det of nuevosDetalles) {
       if (!actualesMap.has(det.producto_id)) {
-        if (!Number.isFinite(Number(det.cantidad)) || Number(det.cantidad) <= 0) {
+        if (
+          !Number.isFinite(Number(det.cantidad)) ||
+          Number(det.cantidad) <= 0
+        ) {
           await client.query("ROLLBACK");
           return res
             .status(400)
@@ -682,17 +691,51 @@ exports.editarPedido = async (req, res) => {
    🔹 Liberar mesa
 ------------------------------------------- */
 exports.liberarMesa = async (req, res) => {
+  const client = await pool.connect();
   try {
     const { id } = req.params;
 
-    await Pedido.actualizar(id, { estado: "cerrado" });
+    await client.query("BEGIN");
+
+    const pedidoResult = await client.query(
+      `SELECT mesa_id FROM pedidos WHERE id = $1 FOR UPDATE`,
+      [id],
+    );
+
+    if (pedidoResult.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    const mesaIdPedido = Number(pedidoResult.rows[0].mesa_id);
+
+    await client.query(
+      `UPDATE pedidos
+       SET estado = 'cerrado',
+           fecha_actualizacion = NOW()
+       WHERE id = $1`,
+      [id],
+    );
+
+    // Al cerrar pedido se libera la mesa.
+    if (Number.isFinite(mesaIdPedido)) {
+      await client.query(`UPDATE mesas SET estado = 'disponible' WHERE id = $1`, [
+        mesaIdPedido,
+      ]);
+    }
+
+    await client.query("COMMIT");
+
     const pedidoCompleto = await Pedido.obtenerPorIdConDetalles(id);
 
     if (req.io) req.io.emit("pedidoActualizado", pedidoCompleto);
 
     res.json({ success: true, pedido: pedidoCompleto });
   } catch (error) {
+    await client.query("ROLLBACK");
     console.error("❌ Error en liberarMesa:", error);
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 };
