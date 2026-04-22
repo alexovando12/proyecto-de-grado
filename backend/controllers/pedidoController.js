@@ -2,10 +2,118 @@ const pool = require("../config/db");
 const Pedido = require("../models/Pedido");
 const DetallePedido = require("../models/DetallePedido");
 
+const normalizarUnidad = (unidad = "") =>
+  String(unidad || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+const esUnidadEntera = (unidad = "") => {
+  const u = normalizarUnidad(unidad);
+  return u === "unidad" || u === "unidades" || u === "porcion" || u === "porciones";
+};
+
+async function obtenerRecetaGeneral(client, producto_id) {
+  const receta = await client.query(
+    `SELECT r.ingrediente_id, r.cantidad, i.nombre AS ingrediente_nombre, i.unidad AS ingrediente_unidad
+     FROM recetas r
+     JOIN ingredientes i ON i.id = r.ingrediente_id
+     WHERE r.producto_id = $1`,
+    [producto_id],
+  );
+
+  return receta.rows;
+}
+
+function normalizarIngredientesAjustes(ingredientes_ajustes, receta = []) {
+  if (!Array.isArray(ingredientes_ajustes)) return [];
+
+  const recetaMap = new Map(
+    (Array.isArray(receta) ? receta : []).map((item) => [
+      Number(item.ingrediente_id),
+      {
+        base: Number(item.cantidad),
+        nombre: item.ingrediente_nombre,
+        unidad: item.ingrediente_unidad,
+      },
+    ]),
+  );
+
+  const ajustesMap = new Map();
+
+  for (const item of ingredientes_ajustes) {
+    const ingredienteId = Number(
+      item?.ingrediente_id ?? item?.id ?? item?.ingredienteId,
+    );
+    const reducir = Number(
+      item?.cantidad_reducida ?? item?.reducir ?? item?.cantidad ?? 0,
+    );
+
+    if (!Number.isFinite(ingredienteId) || ingredienteId <= 0) continue;
+    if (!Number.isFinite(reducir) || reducir < 0) {
+      throw new Error("Cantidad reducida inválida para ingredientes");
+    }
+
+    const recetaItem = recetaMap.get(ingredienteId);
+    if (!recetaItem) {
+      throw new Error("Un ingrediente ajustado no pertenece a la receta del producto");
+    }
+
+    if (esUnidadEntera(recetaItem.unidad) && !Number.isInteger(reducir)) {
+      throw new Error(
+        `La reducción del ingrediente ${recetaItem.nombre} debe ser entera por su unidad`,
+      );
+    }
+
+    if (reducir > recetaItem.base) {
+      throw new Error(
+        `No puedes reducir más de lo que usa la receta para ${recetaItem.nombre}`,
+      );
+    }
+
+    if (reducir === 0) continue;
+
+    ajustesMap.set(ingredienteId, {
+      ingrediente_id: ingredienteId,
+      ingrediente_nombre: recetaItem.nombre,
+      ingrediente_unidad: recetaItem.unidad,
+      cantidad_base: Number(recetaItem.base),
+      cantidad_actual:
+        Number.isFinite(Number(item?.cantidad_actual)) && Number(item.cantidad_actual) >= 0
+          ? Number(item.cantidad_actual)
+          : Number(recetaItem.base - reducir),
+      cantidad_reducida: reducir,
+    });
+  }
+
+  return [...ajustesMap.values()];
+}
+
+function construirClaveDetalle(producto_id, ingredientes_ajustes = []) {
+  const ajustes = (Array.isArray(ingredientes_ajustes)
+    ? ingredientes_ajustes
+    : [])
+    .map((a) => ({
+      ingrediente_id: Number(a?.ingrediente_id ?? a?.id ?? a?.ingredienteId),
+      cantidad_reducida: Number(a?.cantidad_reducida ?? a?.reducir ?? a?.cantidad ?? 0),
+    }))
+    .filter((a) => Number.isFinite(a.ingrediente_id) && a.ingrediente_id > 0)
+    .sort((a, b) => a.ingrediente_id - b.ingrediente_id);
+  return `${Number(producto_id)}|${JSON.stringify(
+    ajustes.map((a) => [a.ingrediente_id, a.cantidad_reducida]),
+  )}`;
+}
+
 /* ------------------------------------------
    🔧 Helper para descontar stock según tipo
 ------------------------------------------- */
-async function descontarStockProducto(client, producto_id, cantidad) {
+async function descontarStockProducto(
+  client,
+  producto_id,
+  cantidad,
+  ingredientes_ajustes = [],
+) {
   const { rows } = await client.query("SELECT * FROM productos WHERE id = $1", [
     producto_id,
   ]);
@@ -53,26 +161,41 @@ async function descontarStockProducto(client, producto_id, cantidad) {
 
     // 🥩 Si es tipo "general", buscar su receta y descontar de ingredientes
   } else if (producto.tipo_inventario === "general") {
-    const receta = await client.query(
-      `
-      SELECT ingrediente_id, cantidad
-      FROM recetas
-      WHERE producto_id = $1
-    `,
-      [producto_id],
-    );
+    const recetaRows = await obtenerRecetaGeneral(client, producto_id);
 
-    if (receta.rows.length === 0) {
+    if (recetaRows.length === 0) {
       throw new Error(
         `El producto ${producto.nombre} no tiene una receta definida`,
       );
     }
 
-    for (const r of receta.rows) {
+    const ajustes = normalizarIngredientesAjustes(
+      ingredientes_ajustes,
+      recetaRows,
+    );
+    const ajustesMap = new Map(
+      ajustes.map((a) => [Number(a.ingrediente_id), a]),
+    );
+
+    for (const r of recetaRows) {
       // 🔧 Convertimos a número para evitar el error "unknown * unknown"
       const cantidadIngrediente = parseFloat(r.cantidad);
       const cantidadPedida = parseFloat(cantidad);
-      const requerido = cantidadIngrediente * cantidadPedida;
+      const ajuste = ajustesMap.get(Number(r.ingrediente_id));
+      const cantidadReducida = Number(ajuste?.cantidad_reducida || 0);
+      const cantidadActual = Number(ajuste?.cantidad_actual);
+      const baseUnit = Number.isFinite(cantidadActual)
+        ? cantidadActual
+        : Number(cantidadIngrediente - cantidadReducida);
+      const requerido = baseUnit * cantidadPedida;
+
+      if (baseUnit < 0) {
+        throw new Error("La reducción supera la cantidad base de la receta");
+      }
+
+      if (requerido <= 0) {
+        continue;
+      }
 
       // Verificar stock de ingrediente
       const ingResult = await client.query(
@@ -105,7 +228,12 @@ async function descontarStockProducto(client, producto_id, cantidad) {
     }
   }
 }
-async function devolverStockProducto(client, producto_id, cantidad) {
+async function devolverStockProducto(
+  client,
+  producto_id,
+  cantidad,
+  ingredientes_ajustes = [],
+) {
   const { rows } = await client.query("SELECT * FROM productos WHERE id = $1", [
     producto_id,
   ]);
@@ -123,17 +251,25 @@ async function devolverStockProducto(client, producto_id, cantidad) {
       [cantidad, producto.producto_preparado_id],
     );
   } else if (producto.tipo_inventario === "general") {
-    const receta = await client.query(
-      `
-      SELECT ingrediente_id, cantidad
-      FROM recetas
-      WHERE producto_id = $1
-    `,
-      [producto_id],
+    const recetaRows = await obtenerRecetaGeneral(client, producto_id);
+    const ajustes = normalizarIngredientesAjustes(
+      ingredientes_ajustes,
+      recetaRows,
+    );
+    const ajustesMap = new Map(
+      ajustes.map((a) => [Number(a.ingrediente_id), a]),
     );
 
-    for (const r of receta.rows) {
-      const devolver = parseFloat(r.cantidad) * cantidad;
+    for (const r of recetaRows) {
+      const ajuste = ajustesMap.get(Number(r.ingrediente_id));
+      const cantidadReducida = Number(ajuste?.cantidad_reducida || 0);
+      const cantidadActual = Number(ajuste?.cantidad_actual);
+      const baseUnit = Number.isFinite(cantidadActual)
+        ? cantidadActual
+        : Number(parseFloat(r.cantidad) - cantidadReducida);
+      const devolver = baseUnit * cantidad;
+
+      if (devolver <= 0) continue;
 
       await client.query(
         `
@@ -231,9 +367,15 @@ exports.crearPedido = async (req, res) => {
 
     // Crear cada detalle y descontar stock
     for (const detalle of detalles) {
+      const recetaDetalle = await obtenerRecetaGeneral(client, detalle.producto_id);
+      const ingredientesAjustes = normalizarIngredientesAjustes(
+        detalle.ingredientes_ajustes,
+        recetaDetalle,
+      );
+
       await client.query(
-        `INSERT INTO detalles_pedido (pedido_id, producto_id, cantidad, notas, precio, estado)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
+        `INSERT INTO detalles_pedido (pedido_id, producto_id, cantidad, notas, precio, estado, ingredientes_ajustes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)`,
         [
           pedido.id,
           detalle.producto_id,
@@ -241,6 +383,7 @@ exports.crearPedido = async (req, res) => {
           detalle.notas,
           detalle.precio,
           "pendiente",
+          JSON.stringify(ingredientesAjustes),
         ],
       );
 
@@ -250,6 +393,7 @@ exports.crearPedido = async (req, res) => {
         client,
         detalle.producto_id,
         detalle.cantidad,
+        ingredientesAjustes,
       );
     }
 
@@ -391,7 +535,7 @@ exports.actualizarEstadoPedido = async (req, res) => {
       }
 
       const detallesResult = await client.query(
-        `SELECT producto_id, cantidad FROM detalles_pedido WHERE pedido_id = $1 FOR UPDATE`,
+        `SELECT producto_id, cantidad, ingredientes_ajustes FROM detalles_pedido WHERE pedido_id = $1 FOR UPDATE`,
         [id],
       );
 
@@ -400,6 +544,7 @@ exports.actualizarEstadoPedido = async (req, res) => {
           client,
           Number(detalle.producto_id),
           Number(detalle.cantidad),
+          detalle.ingredientes_ajustes,
         );
       }
 
@@ -410,9 +555,10 @@ exports.actualizarEstadoPedido = async (req, res) => {
 
       // En cancelación se libera la mesa.
       if (Number.isFinite(mesaIdPedido)) {
-        await client.query(`UPDATE mesas SET estado = 'disponible' WHERE id = $1`, [
-          mesaIdPedido,
-        ]);
+        await client.query(
+          `UPDATE mesas SET estado = 'disponible' WHERE id = $1`,
+          [mesaIdPedido],
+        );
       }
     }
 
@@ -503,13 +649,21 @@ exports.actualizarDetallesPedido = async (req, res) => {
 
     // Mapa para manejar diferencias
     const actualesMap = new Map(
-      detallesActuales.map((d) => [d.producto_id, d]),
+      detallesActuales.map((d) => [
+        construirClaveDetalle(d.producto_id, d.ingredientes_ajustes),
+        d,
+      ]),
     );
-    const nuevosMap = new Map(nuevosDetalles.map((d) => [d.producto_id, d]));
+    const nuevosMap = new Map(
+      nuevosDetalles.map((d) => [
+        construirClaveDetalle(d.producto_id, d.ingredientes_ajustes),
+        d,
+      ]),
+    );
 
     // 1. Eliminar productos que ya no están
-    for (const [producto_id, det] of actualesMap.entries()) {
-      if (!nuevosMap.has(producto_id)) {
+    for (const [detalleKey, det] of actualesMap.entries()) {
+      if (!nuevosMap.has(detalleKey)) {
         if (
           bloquearDetallesListos &&
           String(det.estado || "").toLowerCase() === "listo"
@@ -522,7 +676,12 @@ exports.actualizarDetallesPedido = async (req, res) => {
         }
 
         // devolver stock
-        await devolverStockProducto(client, producto_id, det.cantidad);
+        await devolverStockProducto(
+          client,
+          det.producto_id,
+          det.cantidad,
+          det.ingredientes_ajustes,
+        );
         await client.query(`DELETE FROM detalles_pedido WHERE id = $1`, [
           det.id,
         ]);
@@ -532,9 +691,23 @@ exports.actualizarDetallesPedido = async (req, res) => {
 
     // 2. Actualizar productos existentes
     for (const det of nuevosDetalles) {
-      const actual = actualesMap.get(det.producto_id);
+      const detalleKey = construirClaveDetalle(
+        det.producto_id,
+        det.ingredientes_ajustes,
+      );
+      const actual = actualesMap.get(detalleKey);
 
       if (actual) {
+        const recetaDetalle = await obtenerRecetaGeneral(client, det.producto_id);
+        const ajustesActuales = normalizarIngredientesAjustes(
+          actual.ingredientes_ajustes,
+          recetaDetalle,
+        );
+        const ajustesNuevos = normalizarIngredientesAjustes(
+          det.ingredientes_ajustes,
+          recetaDetalle,
+        );
+
         const cantidadNueva = Number(det.cantidad);
         const cantidadActual = Number(actual.cantidad);
         const precioNuevo = Number(det.precio);
@@ -560,33 +733,75 @@ exports.actualizarDetallesPedido = async (req, res) => {
           });
         }
 
+        if (
+          bloquearDetallesListos &&
+          String(actual.estado || "").toLowerCase() === "listo" &&
+          JSON.stringify(ajustesNuevos) !== JSON.stringify(ajustesActuales)
+        ) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({
+            error:
+              "No puedes modificar ingredientes en un detalle listo cuando el pedido está entregado.",
+          });
+        }
+
+        const reduccionActualMap = new Map(
+          ajustesActuales.map((a) => [
+            Number(a.ingrediente_id),
+            Number(a.cantidad_reducida),
+          ]),
+        );
+        for (const ajusteNuevo of ajustesNuevos) {
+          const actualReducida = Number(
+            reduccionActualMap.get(Number(ajusteNuevo.ingrediente_id)) || 0,
+          );
+          if (Number(ajusteNuevo.cantidad_reducida) < actualReducida) {
+            await client.query("ROLLBACK");
+            return res.status(400).json({
+              error:
+                "Solo puedes mantener o aumentar la reducción de ingredientes, no disminuirla.",
+            });
+          }
+        }
+
         const huboCambioDetalle =
-          cantidadNueva !== cantidadActual || notasNueva !== notasActual;
+          cantidadNueva !== cantidadActual ||
+          notasNueva !== notasActual ||
+          JSON.stringify(ajustesNuevos) !== JSON.stringify(ajustesActuales);
 
         if (!huboCambioDetalle) {
           continue;
         }
 
-        const diferencia = cantidadNueva - cantidadActual;
-
-        if (diferencia > 0) {
-          await descontarStockProducto(client, det.producto_id, diferencia);
-        } else if (diferencia < 0) {
-          await devolverStockProducto(
-            client,
-            det.producto_id,
-            Math.abs(diferencia),
-          );
-        }
+        await devolverStockProducto(
+          client,
+          det.producto_id,
+          cantidadActual,
+          ajustesActuales,
+        );
+        await descontarStockProducto(
+          client,
+          det.producto_id,
+          cantidadNueva,
+          ajustesNuevos,
+        );
 
         await client.query(
           `UPDATE detalles_pedido 
            SET cantidad = $1,
                notas = $2,
                precio = $3,
-               estado = $4
-           WHERE id = $5`,
-          [cantidadNueva, notasNueva, precioNuevo, "actualizado", actual.id],
+               estado = $4,
+               ingredientes_ajustes = $5::jsonb
+           WHERE id = $6`,
+          [
+            cantidadNueva,
+            notasNueva,
+            precioNuevo,
+            "actualizado",
+            JSON.stringify(ajustesNuevos),
+            actual.id,
+          ],
         );
 
         huboCambios = true;
@@ -595,7 +810,18 @@ exports.actualizarDetallesPedido = async (req, res) => {
 
     // 3. Agregar productos nuevos
     for (const det of nuevosDetalles) {
-      if (!actualesMap.has(det.producto_id)) {
+      const detalleKey = construirClaveDetalle(
+        det.producto_id,
+        det.ingredientes_ajustes,
+      );
+
+      if (!actualesMap.has(detalleKey)) {
+        const recetaDetalle = await obtenerRecetaGeneral(client, det.producto_id);
+        const ingredientesAjustes = normalizarIngredientesAjustes(
+          det.ingredientes_ajustes,
+          recetaDetalle,
+        );
+
         if (
           !Number.isFinite(Number(det.cantidad)) ||
           Number(det.cantidad) <= 0
@@ -606,12 +832,24 @@ exports.actualizarDetallesPedido = async (req, res) => {
             .json({ error: "Cantidad inválida en los detalles del pedido" });
         }
 
-        await descontarStockProducto(client, det.producto_id, det.cantidad);
+        await descontarStockProducto(
+          client,
+          det.producto_id,
+          det.cantidad,
+          ingredientesAjustes,
+        );
 
         await client.query(
-          `INSERT INTO detalles_pedido (pedido_id, producto_id, cantidad, notas, precio, estado)
-           VALUES ($1, $2, $3, $4, $5, 'nuevo')`,
-          [id, det.producto_id, det.cantidad, det.notas, det.precio],
+          `INSERT INTO detalles_pedido (pedido_id, producto_id, cantidad, notas, precio, estado, ingredientes_ajustes)
+           VALUES ($1, $2, $3, $4, $5, 'nuevo', $6::jsonb)`,
+          [
+            id,
+            det.producto_id,
+            det.cantidad,
+            det.notas,
+            det.precio,
+            JSON.stringify(ingredientesAjustes),
+          ],
         );
 
         huboCambios = true;
@@ -674,6 +912,7 @@ exports.editarPedido = async (req, res) => {
         cantidad: detalle.cantidad,
         notas: detalle.notas,
         precio: detalle.precio,
+        ingredientes_ajustes: detalle.ingredientes_ajustes,
       });
       total += detalle.precio * detalle.cantidad;
     }
@@ -719,9 +958,10 @@ exports.liberarMesa = async (req, res) => {
 
     // Al cerrar pedido se libera la mesa.
     if (Number.isFinite(mesaIdPedido)) {
-      await client.query(`UPDATE mesas SET estado = 'disponible' WHERE id = $1`, [
-        mesaIdPedido,
-      ]);
+      await client.query(
+        `UPDATE mesas SET estado = 'disponible' WHERE id = $1`,
+        [mesaIdPedido],
+      );
     }
 
     await client.query("COMMIT");

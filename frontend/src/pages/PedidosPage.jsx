@@ -425,14 +425,14 @@ const PedidosPage = () => {
                   <div className="pedido-card-actions">
                     {pedido.estado !== "cerrado" &&
                       pedido.estado !== "cancelado" && (
-                      <button
-                        className="btn btn-warning btn-sm"
-                        onClick={() => editarPedido(pedido)}
-                        disabled={pedidoAccionLoadingId === pedido.id}
-                      >
-                        Editar
-                      </button>
-                    )}
+                        <button
+                          className="btn btn-warning btn-sm"
+                          onClick={() => editarPedido(pedido)}
+                          disabled={pedidoAccionLoadingId === pedido.id}
+                        >
+                          Editar
+                        </button>
+                      )}
 
                     {pedido.estado === "listo" && (
                       <button

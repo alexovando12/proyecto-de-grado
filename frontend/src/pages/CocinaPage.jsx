@@ -36,6 +36,9 @@ const CocinaPage = () => {
       ? pedido.detalles.map((d) => ({
           ...d,
           estado: d?.estado || "pendiente",
+          ingredientes_ajustes: Array.isArray(d?.ingredientes_ajustes)
+            ? d.ingredientes_ajustes
+            : [],
         }))
       : [],
   });
@@ -207,6 +210,22 @@ const CocinaPage = () => {
                       <span>{d.precio} Bs</span>
                       <span className="pedido-detalle-estado">{d.estado}</span>
                       {d.notas && <span>Nota: {d.notas}</span>}
+                      {Array.isArray(d.ingredientes_ajustes) &&
+                        d.ingredientes_ajustes.length > 0 && (
+                          <div className="pedido-detalle-ajustes">
+                            {d.ingredientes_ajustes.map((aj, ajIdx) => (
+                              <span key={ajIdx}>
+                                Con reducción de {aj.cantidad_reducida}
+                                {aj.ingrediente_unidad ? ` ${aj.ingrediente_unidad}` : ""}
+                                {" de "}
+                                {aj.ingrediente_nombre || `#${aj.ingrediente_id}`}
+                                {Number.isFinite(Number(aj.cantidad_actual))
+                                  ? `, queda ${Number(aj.cantidad_actual)}${aj.ingrediente_unidad ? ` ${aj.ingrediente_unidad}` : ""}`
+                                  : ""}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                     </div>
                   ))}
                   <p className="pedido-total">Total: {pedido.total} Bs</p>

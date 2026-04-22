@@ -868,7 +868,7 @@ const InventarioPage = () => {
                           value={ingredienteForm.nombre}
                           onChange={(e) => {
                             let val = e.target.value;
-                            val = val.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, "");
+                            val = val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
 
                             setIngredienteForm({
                               ...ingredienteForm,
@@ -1347,94 +1347,96 @@ const InventarioPage = () => {
               </div>
 
               <div className="inventario-grid">
-              {ingredientes.length === 0 ? (
-                <div className="empty-state">
-                  <p>No hay ingredientes registrados</p>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => setShowIngredienteForm(true)}
-                  >
-                    Agregar Ingrediente
-                  </button>
-                </div>
-              ) : ingredientesFiltrados.length === 0 ? (
-                <div className="empty-state">
-                  <p>No se encontraron ingredientes con ese texto</p>
-                </div>
-              ) : (
-                ingredientesFiltrados.map((ingrediente) => (
-                  <div
-                    key={ingrediente.id}
-                    className={`ingrediente-card ${getStockClass(getStockStatus(ingrediente.stock_actual, ingrediente.stock_minimo))}`}
-                  >
-                    <div className="ingrediente-header">
-                      <h3 className="ingrediente-nombre">
-                        {ingrediente.nombre}
-                      </h3>
-                      <div className="ingrediente-acciones">
-                        <button
-                          className="btn btn-icon"
-                          onClick={() => {
-                            setEditingIngrediente(ingrediente);
-                            setIngredienteForm({
-                              ...ingrediente,
-                              stock_actual: String(
-                                ingrediente.stock_actual ?? "",
-                              ),
-                              stock_minimo: String(
-                                ingrediente.stock_minimo ?? "",
-                              ),
-                              tipo_ajuste: "aumentar",
-                              cantidad_ajuste: "",
-                            });
-                            setShowIngredienteForm(true);
-                          }}
-                          title="Editar"
-                          disabled={loading}
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          className="btn btn-icon"
-                          onClick={() =>
-                            handleDeleteIngrediente(ingrediente.id)
-                          }
-                          title="Eliminar"
-                          disabled={loading}
-                        >
-                          🗑️
-                        </button>
+                {ingredientes.length === 0 ? (
+                  <div className="empty-state">
+                    <p>No hay ingredientes registrados</p>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => setShowIngredienteForm(true)}
+                    >
+                      Agregar Ingrediente
+                    </button>
+                  </div>
+                ) : ingredientesFiltrados.length === 0 ? (
+                  <div className="empty-state">
+                    <p>No se encontraron ingredientes con ese texto</p>
+                  </div>
+                ) : (
+                  ingredientesFiltrados.map((ingrediente) => (
+                    <div
+                      key={ingrediente.id}
+                      className={`ingrediente-card ${getStockClass(getStockStatus(ingrediente.stock_actual, ingrediente.stock_minimo))}`}
+                    >
+                      <div className="ingrediente-header">
+                        <h3 className="ingrediente-nombre">
+                          {ingrediente.nombre}
+                        </h3>
+                        <div className="ingrediente-acciones">
+                          <button
+                            className="btn btn-icon"
+                            onClick={() => {
+                              setEditingIngrediente(ingrediente);
+                              setIngredienteForm({
+                                ...ingrediente,
+                                stock_actual: String(
+                                  ingrediente.stock_actual ?? "",
+                                ),
+                                stock_minimo: String(
+                                  ingrediente.stock_minimo ?? "",
+                                ),
+                                tipo_ajuste: "aumentar",
+                                cantidad_ajuste: "",
+                              });
+                              setShowIngredienteForm(true);
+                            }}
+                            title="Editar"
+                            disabled={loading}
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            className="btn btn-icon"
+                            onClick={() =>
+                              handleDeleteIngrediente(ingrediente.id)
+                            }
+                            title="Eliminar"
+                            disabled={loading}
+                          >
+                            🗑️
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="ingrediente-info">
-                      <div className="ingrediente-info-item">
-                        <span className="ingrediente-info-label">Unidad:</span>
-                        <span className="ingrediente-info-value">
-                          {ingrediente.unidad}
+                      <div className="ingrediente-info">
+                        <div className="ingrediente-info-item">
+                          <span className="ingrediente-info-label">
+                            Unidad:
+                          </span>
+                          <span className="ingrediente-info-value">
+                            {ingrediente.unidad}
+                          </span>
+                        </div>
+                      </div>
+                      <div
+                        className={`ingrediente-stock ${getStockClass(getStockStatus(ingrediente.stock_actual, ingrediente.stock_minimo))}`}
+                      >
+                        <span className="ingrediente-stock-actual">
+                          {ingrediente.stock_actual} {ingrediente.unidad}
+                        </span>
+                        <span className="ingrediente-stock-minimo">
+                          Mín: {ingrediente.stock_minimo} {ingrediente.unidad}
                         </span>
                       </div>
+                      <div className="ingrediente-status">
+                        {getStockBadge(
+                          getStockStatus(
+                            ingrediente.stock_actual,
+                            ingrediente.stock_minimo,
+                          ),
+                        )}
+                      </div>
                     </div>
-                    <div
-                      className={`ingrediente-stock ${getStockClass(getStockStatus(ingrediente.stock_actual, ingrediente.stock_minimo))}`}
-                    >
-                      <span className="ingrediente-stock-actual">
-                        {ingrediente.stock_actual} {ingrediente.unidad}
-                      </span>
-                      <span className="ingrediente-stock-minimo">
-                        Mín: {ingrediente.stock_minimo} {ingrediente.unidad}
-                      </span>
-                    </div>
-                    <div className="ingrediente-status">
-                      {getStockBadge(
-                        getStockStatus(
-                          ingrediente.stock_actual,
-                          ingrediente.stock_minimo,
-                        ),
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
               </div>
             </>
           )}
@@ -1447,151 +1449,155 @@ const InventarioPage = () => {
                   className="inventario-search-input"
                   placeholder="Buscar producto preparado, descripcion o ingrediente..."
                   value={searchProductosPreparados}
-                  onChange={(e) =>
-                    setSearchProductosPreparados(e.target.value)
-                  }
+                  onChange={(e) => setSearchProductosPreparados(e.target.value)}
                   disabled={loading}
                 />
               </div>
 
               <div className="inventario-grid">
-              {productosPreparados.length === 0 ? (
-                <div className="empty-state">
-                  <p>No hay productos preparados registrados</p>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => setShowProductoForm(true)}
-                  >
-                    Agregar Producto Preparado
-                  </button>
-                </div>
-              ) : productosPreparadosFiltrados.length === 0 ? (
-                <div className="empty-state">
-                  <p>No se encontraron productos preparados con ese texto</p>
-                </div>
-              ) : (
-                productosPreparadosFiltrados.map((producto) => (
-                  <div
-                    key={producto.id}
-                    className={`ingrediente-card ${getStockClass(getStockStatus(producto.stock_actual, producto.stock_minimo))}`}
-                  >
-                    <div className="ingrediente-header">
-                      <h3 className="ingrediente-nombre">{producto.nombre}</h3>
-                      <div className="ingrediente-acciones">
-                        <button
-                          className="btn btn-icon"
-                          onClick={() => handleEditProducto(producto)}
-                          title="Editar"
-                          disabled={loading}
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          className="btn btn-icon"
-                          onClick={() => handleDeleteProducto(producto.id)}
-                          title="Eliminar"
-                          disabled={loading}
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                    <div className="ingrediente-info">
-                      <div className="ingrediente-info-item">
-                        <span className="ingrediente-info-label">Tipo:</span>
-                        <span className="ingrediente-info-value">
-                          Preparado
-                        </span>
-                      </div>
-                      <div className="ingrediente-info-item">
-                        <span className="ingrediente-info-label">Unidad:</span>
-                        <span className="ingrediente-info-value">
-                          {producto.unidad}
-                        </span>
-                      </div>
-                    </div>
-                    <div
-                      className={`ingrediente-stock ${getStockClass(getStockStatus(producto.stock_actual, producto.stock_minimo))}`}
+                {productosPreparados.length === 0 ? (
+                  <div className="empty-state">
+                    <p>No hay productos preparados registrados</p>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => setShowProductoForm(true)}
                     >
-                      <span className="ingrediente-stock-actual">
-                        {producto.stock_actual} {producto.unidad}
-                      </span>
-                      <span className="ingrediente-stock-minimo">
-                        Mín: {producto.stock_minimo} {producto.unidad}
-                      </span>
-                    </div>
-                    <div className="ingrediente-status">
-                      {getStockBadge(
-                        getStockStatus(
-                          producto.stock_actual,
-                          producto.stock_minimo,
-                        ),
-                      )}
-                    </div>
-
-                    {/* Mostrar receta del producto */}
-                    <div className="producto-receta">
-                      <h5>📝 Receta:</h5>
-                      {producto.receta && producto.receta.length > 0 ? (
-                        <ul className="receta-list">
-                          {producto.receta.map((item, index) => (
-                            <li key={index}>
-                              • {item.ingrediente_nombre}: {item.cantidad}{" "}
-                              {item.ingrediente_unidad}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="no-receta">⚠️ No hay receta definida</p>
-                      )}
-                    </div>
-
-                    <div className="producto-acciones">
-                      <button
-                        className="btn btn-primary btn-sm"
-                        onClick={() => {
-                          const cantidadInput = prompt(
-                            `¿Qué stock final deseas establecer para ${producto.nombre} (${producto.unidad})?`,
-                            String(producto.stock_actual ?? "1"),
-                          );
-
-                          if (cantidadInput == null) return;
-
-                          const cantidadNormalizada = Number(
-                            String(cantidadInput).replace(",", "."),
-                          );
-
-                          if (
-                            !Number.isFinite(cantidadNormalizada) ||
-                            cantidadNormalizada <= 0
-                          ) {
-                            alert("Ingresa un stock final válido mayor que 0");
-                            return;
-                          }
-
-                          if (
-                            esUnidadEntera(producto.unidad) &&
-                            !Number.isInteger(cantidadNormalizada)
-                          ) {
-                            alert(
-                              "Para unidades o porciones, la cantidad debe ser entera",
-                            );
-                            return;
-                          }
-
-                          handlePrepararProducto(
-                            producto.id,
-                            cantidadNormalizada,
-                          );
-                        }}
-                        disabled={loading}
-                      >
-                        Preparar
-                      </button>
-                    </div>
+                      Agregar Producto Preparado
+                    </button>
                   </div>
-                ))
-              )}
+                ) : productosPreparadosFiltrados.length === 0 ? (
+                  <div className="empty-state">
+                    <p>No se encontraron productos preparados con ese texto</p>
+                  </div>
+                ) : (
+                  productosPreparadosFiltrados.map((producto) => (
+                    <div
+                      key={producto.id}
+                      className={`ingrediente-card ${getStockClass(getStockStatus(producto.stock_actual, producto.stock_minimo))}`}
+                    >
+                      <div className="ingrediente-header">
+                        <h3 className="ingrediente-nombre">
+                          {producto.nombre}
+                        </h3>
+                        <div className="ingrediente-acciones">
+                          <button
+                            className="btn btn-icon"
+                            onClick={() => handleEditProducto(producto)}
+                            title="Editar"
+                            disabled={loading}
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            className="btn btn-icon"
+                            onClick={() => handleDeleteProducto(producto.id)}
+                            title="Eliminar"
+                            disabled={loading}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                      <div className="ingrediente-info">
+                        <div className="ingrediente-info-item">
+                          <span className="ingrediente-info-label">Tipo:</span>
+                          <span className="ingrediente-info-value">
+                            Preparado
+                          </span>
+                        </div>
+                        <div className="ingrediente-info-item">
+                          <span className="ingrediente-info-label">
+                            Unidad:
+                          </span>
+                          <span className="ingrediente-info-value">
+                            {producto.unidad}
+                          </span>
+                        </div>
+                      </div>
+                      <div
+                        className={`ingrediente-stock ${getStockClass(getStockStatus(producto.stock_actual, producto.stock_minimo))}`}
+                      >
+                        <span className="ingrediente-stock-actual">
+                          {producto.stock_actual} {producto.unidad}
+                        </span>
+                        <span className="ingrediente-stock-minimo">
+                          Mín: {producto.stock_minimo} {producto.unidad}
+                        </span>
+                      </div>
+                      <div className="ingrediente-status">
+                        {getStockBadge(
+                          getStockStatus(
+                            producto.stock_actual,
+                            producto.stock_minimo,
+                          ),
+                        )}
+                      </div>
+
+                      {/* Mostrar receta del producto */}
+                      <div className="producto-receta">
+                        <h5>📝 Receta:</h5>
+                        {producto.receta && producto.receta.length > 0 ? (
+                          <ul className="receta-list">
+                            {producto.receta.map((item, index) => (
+                              <li key={index}>
+                                • {item.ingrediente_nombre}: {item.cantidad}{" "}
+                                {item.ingrediente_unidad}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="no-receta">⚠️ No hay receta definida</p>
+                        )}
+                      </div>
+
+                      <div className="producto-acciones">
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => {
+                            const cantidadInput = prompt(
+                              `¿Qué stock final deseas establecer para ${producto.nombre} (${producto.unidad})?`,
+                              String(producto.stock_actual ?? "1"),
+                            );
+
+                            if (cantidadInput == null) return;
+
+                            const cantidadNormalizada = Number(
+                              String(cantidadInput).replace(",", "."),
+                            );
+
+                            if (
+                              !Number.isFinite(cantidadNormalizada) ||
+                              cantidadNormalizada <= 0
+                            ) {
+                              alert(
+                                "Ingresa un stock final válido mayor que 0",
+                              );
+                              return;
+                            }
+
+                            if (
+                              esUnidadEntera(producto.unidad) &&
+                              !Number.isInteger(cantidadNormalizada)
+                            ) {
+                              alert(
+                                "Para unidades o porciones, la cantidad debe ser entera",
+                              );
+                              return;
+                            }
+
+                            handlePrepararProducto(
+                              producto.id,
+                              cantidadNormalizada,
+                            );
+                          }}
+                          disabled={loading}
+                        >
+                          Preparar
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </>
           )}

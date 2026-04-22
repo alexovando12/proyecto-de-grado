@@ -38,7 +38,9 @@ const ProductosPage = () => {
   };
 
   const parsearPrecio = (value) => {
-    const normalizado = String(value ?? "").trim().replace(/,/g, ".");
+    const normalizado = String(value ?? "")
+      .trim()
+      .replace(/,/g, ".");
     if (!normalizado) return NaN;
     return Number(normalizado);
   };

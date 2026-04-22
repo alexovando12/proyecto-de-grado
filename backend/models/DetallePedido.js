@@ -13,23 +13,44 @@ class DetallePedido {
   }
 
   static async crear(detalle) {
-    const { pedido_id, producto_id, cantidad, notas, precio } = detalle;
+    const {
+      pedido_id,
+      producto_id,
+      cantidad,
+      notas,
+      precio,
+      ingredientes_ajustes = [],
+    } = detalle;
     const result = await pool.query(
-      `INSERT INTO detalles_pedido (pedido_id, producto_id, cantidad, notas, precio, estado) 
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [pedido_id, producto_id, cantidad, notas, precio, 'pendiente']
+      `INSERT INTO detalles_pedido (pedido_id, producto_id, cantidad, notas, precio, estado, ingredientes_ajustes) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb) RETURNING *`,
+      [
+        pedido_id,
+        producto_id,
+        cantidad,
+        notas,
+        precio,
+        'pendiente',
+        JSON.stringify(Array.isArray(ingredientes_ajustes) ? ingredientes_ajustes : []),
+      ]
     );
     return result.rows[0];
   }
 
   static async actualizar(id, detalle) {
-    const { cantidad, notas, estado } = detalle;
+    const { cantidad, notas, estado, ingredientes_ajustes = [] } = detalle;
     const result = await pool.query(
       `UPDATE detalles_pedido 
-       SET cantidad = $1, notas = $2, estado = $3 
-       WHERE id = $4 
+       SET cantidad = $1, notas = $2, estado = $3, ingredientes_ajustes = $4::jsonb 
+       WHERE id = $5 
        RETURNING *`,
-      [cantidad, notas, estado, id]
+      [
+        cantidad,
+        notas,
+        estado,
+        JSON.stringify(Array.isArray(ingredientes_ajustes) ? ingredientes_ajustes : []),
+        id,
+      ]
     );
     return result.rows[0];
   }

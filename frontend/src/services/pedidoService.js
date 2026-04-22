@@ -1,5 +1,40 @@
 import api from "./api.js";
 
+const normalizarAjustes = (ajustes) => {
+  if (!Array.isArray(ajustes)) return [];
+  return ajustes
+    .map((a) => {
+      const cantidadBase = Number(a?.cantidad_base);
+      const cantidadReducida = Number(
+        a?.cantidad_reducida ?? a?.reducir ?? a?.cantidad ?? 0,
+      );
+      const cantidadActualRaw = Number(a?.cantidad_actual);
+      const cantidadActual = Number.isFinite(cantidadActualRaw)
+        ? cantidadActualRaw
+        : Number.isFinite(cantidadBase) && Number.isFinite(cantidadReducida)
+          ? cantidadBase - cantidadReducida
+          : undefined;
+
+      return {
+        ingrediente_id: Number(a?.ingrediente_id ?? a?.id ?? a?.ingredienteId),
+        ingrediente_nombre: a?.ingrediente_nombre ?? a?.nombre ?? "",
+        ingrediente_unidad: a?.ingrediente_unidad ?? a?.unidad ?? "",
+        cantidad_base: Number.isFinite(cantidadBase) ? cantidadBase : undefined,
+        cantidad_actual: Number.isFinite(cantidadActual)
+          ? cantidadActual
+          : undefined,
+        cantidad_reducida: cantidadReducida,
+      };
+    })
+    .filter(
+      (a) =>
+        Number.isFinite(a.ingrediente_id) &&
+        a.ingrediente_id > 0 &&
+        Number.isFinite(a.cantidad_reducida) &&
+        a.cantidad_reducida > 0,
+    );
+};
+
 export const pedidoService = {
   // =========================
   // OBTENER
@@ -38,6 +73,7 @@ export const pedidoService = {
         cantidad: Number(i.cantidad),
         notas: i.notas ?? "",
         precio: Number(i.precio),
+        ingredientes_ajustes: normalizarAjustes(i.ingredientes_ajustes),
       }));
 
       const { data } = await api.post("/pedidos", {
@@ -65,6 +101,7 @@ export const pedidoService = {
         cantidad: Number(i.cantidad),
         notas: i.notas ?? "",
         precio: Number(i.precio),
+        ingredientes_ajustes: normalizarAjustes(i.ingredientes_ajustes),
       }));
 
       const { data } = await api.put(`/pedidos/${Number(id)}`, {
@@ -118,7 +155,10 @@ export const pedidoService = {
   editarDetalles: async (id, detalles) => {
     try {
       const { data } = await api.put(`/pedidos/${Number(id)}/detalles`, {
-        detalles,
+        detalles: (Array.isArray(detalles) ? detalles : []).map((i) => ({
+          ...i,
+          ingredientes_ajustes: normalizarAjustes(i.ingredientes_ajustes),
+        })),
       });
       return data;
     } catch (error) {

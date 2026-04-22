@@ -70,6 +70,7 @@ class Pedido {
         d.cantidad,
         d.precio,
         d.notas,
+        d.ingredientes_ajustes,
         d.estado AS detalle_estado,
         pr.nombre AS producto_nombre
       FROM pedidos p
@@ -114,6 +115,7 @@ class Pedido {
           cantidad: row.cantidad,
           precio: row.precio,
           notas: row.notas,
+          ingredientes_ajustes: row.ingredientes_ajustes || [],
           estado: row.detalle_estado,
         });
       }
@@ -140,6 +142,7 @@ class Pedido {
         d.cantidad,
         d.precio,
         d.notas,
+        d.ingredientes_ajustes,
         d.estado AS detalle_estado,
         pr.nombre AS producto_nombre
       FROM pedidos p
@@ -179,6 +182,7 @@ class Pedido {
           cantidad: row.cantidad,
           precio: row.precio,
           notas: row.notas,
+          ingredientes_ajustes: row.ingredientes_ajustes || [],
           estado: row.detalle_estado,
         });
       }
@@ -207,6 +211,7 @@ class Pedido {
         d.cantidad,
         d.precio,
         d.notas,
+        d.ingredientes_ajustes,
         d.estado AS detalle_estado,
         pr.nombre AS producto_nombre
       FROM pedidos p
@@ -252,6 +257,7 @@ class Pedido {
           cantidad: row.cantidad,
           precio: row.precio,
           notas: row.notas,
+          ingredientes_ajustes: row.ingredientes_ajustes || [],
           estado: row.detalle_estado,
         });
       }
@@ -278,6 +284,7 @@ class Pedido {
         d.cantidad,
         d.precio,
         d.notas,
+        d.ingredientes_ajustes,
         d.estado AS detalle_estado,
         pr.nombre AS producto_nombre
       FROM pedidos p
@@ -317,6 +324,7 @@ class Pedido {
           cantidad: row.cantidad,
           precio: row.precio,
           notas: row.notas,
+          ingredientes_ajustes: row.ingredientes_ajustes || [],
           estado: row.detalle_estado,
         });
       }

@@ -33,7 +33,9 @@ const UsuariosPage = () => {
       setUsuarios(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(
-        err?.response?.data?.error || err?.message || "Error al cargar usuarios",
+        err?.response?.data?.error ||
+          err?.message ||
+          "Error al cargar usuarios",
       );
       setUsuarios([]);
     } finally {
@@ -46,12 +48,22 @@ const UsuariosPage = () => {
   }, []);
 
   const usuariosFiltrados = useMemo(() => {
-    const texto = String(searchText || "").toLowerCase().trim();
+    const texto = String(searchText || "")
+      .toLowerCase()
+      .trim();
     if (!texto) return usuarios;
 
     return usuarios.filter((usuario) => {
-      return [usuario.nombre, usuario.email, usuario.rol, String(usuario.id)]
-        .some((campo) => String(campo || "").toLowerCase().includes(texto));
+      return [
+        usuario.nombre,
+        usuario.email,
+        usuario.rol,
+        String(usuario.id),
+      ].some((campo) =>
+        String(campo || "")
+          .toLowerCase()
+          .includes(texto),
+      );
     });
   }, [usuarios, searchText]);
 
@@ -81,7 +93,9 @@ const UsuariosPage = () => {
       await cargarUsuarios();
     } catch (err) {
       setError(
-        err?.response?.data?.error || err?.message || "No se pudo eliminar usuario",
+        err?.response?.data?.error ||
+          err?.message ||
+          "No se pudo eliminar usuario",
       );
       setLoading(false);
     }
@@ -93,7 +107,9 @@ const UsuariosPage = () => {
     const nombre = String(formData.nombre || "").trim();
     const email = String(formData.email || "").trim();
     const password = String(formData.password || "").trim();
-    const rol = String(formData.rol || "").trim().toLowerCase();
+    const rol = String(formData.rol || "")
+      .trim()
+      .toLowerCase();
 
     if (!nombre || !email || !rol) {
       setError("Nombre, email y rol son requeridos");
@@ -131,7 +147,9 @@ const UsuariosPage = () => {
       await cargarUsuarios();
     } catch (err) {
       setError(
-        err?.response?.data?.error || err?.message || "No se pudo guardar usuario",
+        err?.response?.data?.error ||
+          err?.message ||
+          "No se pudo guardar usuario",
       );
       setLoading(false);
     }
@@ -144,7 +162,9 @@ const UsuariosPage = () => {
           <div className="usuarios-header">
             <div>
               <h1 className="usuarios-title">Gestión de Usuarios</h1>
-              <p className="usuarios-subtitle">Administración de cuentas del sistema</p>
+              <p className="usuarios-subtitle">
+                Administración de cuentas del sistema
+              </p>
             </div>
             <button
               className="btn btn-primary"
@@ -182,7 +202,9 @@ const UsuariosPage = () => {
           ) : usuarios.length === 0 ? (
             <div className="usuarios-empty">No hay usuarios registrados.</div>
           ) : usuariosFiltrados.length === 0 ? (
-            <div className="usuarios-empty">No se encontraron usuarios con ese filtro.</div>
+            <div className="usuarios-empty">
+              No se encontraron usuarios con ese filtro.
+            </div>
           ) : (
             <div className="usuarios-table-wrap">
               <table className="usuarios-table">
@@ -203,7 +225,9 @@ const UsuariosPage = () => {
                       <td>{usuario.nombre}</td>
                       <td>{usuario.email}</td>
                       <td>
-                        <span className="usuarios-rol-badge">{usuario.rol}</span>
+                        <span className="usuarios-rol-badge">
+                          {usuario.rol}
+                        </span>
                       </td>
                       <td>
                         {usuario.fecha_creacion
@@ -301,7 +325,11 @@ const UsuariosPage = () => {
                   </div>
 
                   <div className="usuarios-form-actions">
-                    <button type="submit" className="btn btn-primary" disabled={loading}>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={loading}
+                    >
                       {editingUsuario ? "Actualizar" : "Crear"}
                     </button>
                     <button
