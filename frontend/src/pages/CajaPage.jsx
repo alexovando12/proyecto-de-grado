@@ -24,12 +24,12 @@ const normalizarCategoria = (categoria = "") =>
 
 const esBebida = (categoria = "") => normalizarCategoria(categoria) === "bebida";
 
-const filtrarDetallesCocina = (detalles = []) =>
-  (Array.isArray(detalles) ? detalles : []).filter(
-    (d) => !esBebida(d?.producto_categoria),
+const filtrarDetallesCaja = (detalles = []) =>
+  (Array.isArray(detalles) ? detalles : []).filter((d) =>
+    esBebida(d?.producto_categoria),
   );
 
-const CocinaPage = () => {
+const CajaPage = () => {
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState("preparando");
@@ -57,11 +57,11 @@ const CocinaPage = () => {
       : [],
   });
 
-  const normalizarPedidoCocina = (pedido) => {
+  const normalizarPedidoCaja = (pedido) => {
     const base = normalizePedido(pedido);
-    const detallesCocina = filtrarDetallesCocina(base.detalles);
-    const totalDetalles = detallesCocina.length;
-    const totalListos = detallesCocina.filter(
+    const detallesCaja = filtrarDetallesCaja(base.detalles);
+    const totalDetalles = detallesCaja.length;
+    const totalListos = detallesCaja.filter(
       (d) => String(d?.estado || "").toLowerCase() === "listo",
     ).length;
     const estadoModulo =
@@ -69,7 +69,7 @@ const CocinaPage = () => {
 
     return {
       ...base,
-      detalles_modulo: detallesCocina,
+      detalles_modulo: detallesCaja,
       estado_modulo: estadoModulo,
     };
   };
@@ -78,11 +78,11 @@ const CocinaPage = () => {
     cargarPedidos();
 
     const onConnect = () => {
-      console.log("✅ Socket cocina conectado:", socket.id);
+      console.log("✅ Socket caja conectado:", socket.id);
     };
 
     const onDisconnect = (reason) => {
-      console.log("❌ Socket cocina desconectado:", reason);
+      console.log("❌ Socket caja desconectado:", reason);
     };
 
     const onPedidoCreado = () => {
@@ -116,7 +116,7 @@ const CocinaPage = () => {
     try {
       const data = await pedidoService.obtenerTodos(fechaFiltro);
       const normalizados = (Array.isArray(data) ? data : [])
-        .map(normalizarPedidoCocina)
+        .map(normalizarPedidoCaja)
         .filter((p) => (p.detalles_modulo ?? []).length > 0)
         .filter((p) =>
           filtroEstado
@@ -152,37 +152,37 @@ const CocinaPage = () => {
         detalleIds,
       );
 
-      const pedidoCocinaActualizado = normalizarPedidoCocina(pedidoActualizado);
+      const pedidoCajaActualizado = normalizarPedidoCaja(pedidoActualizado);
 
       setPedidos((prev) => {
-        const existe = prev.some((p) => p.id === pedidoCocinaActualizado.id);
+        const existe = prev.some((p) => p.id === pedidoCajaActualizado.id);
 
         if (
-          (pedidoCocinaActualizado.detalles_modulo ?? []).length === 0 ||
+          (pedidoCajaActualizado.detalles_modulo ?? []).length === 0 ||
           (filtroEstado &&
-            String(pedidoCocinaActualizado.estado_modulo || "").toLowerCase() !==
+            String(pedidoCajaActualizado.estado_modulo || "").toLowerCase() !==
               filtroEstado)
         ) {
-          return prev.filter((p) => p.id !== pedidoCocinaActualizado.id);
+          return prev.filter((p) => p.id !== pedidoCajaActualizado.id);
         }
 
-        if (filtroEstado === "" || pedidoCocinaActualizado.estado_modulo === filtroEstado) {
+        if (filtroEstado === "" || pedidoCajaActualizado.estado_modulo === filtroEstado) {
           if (existe) {
             return sortByFechaActualizacionAsc(
               prev.map((p) =>
-                p.id === pedidoCocinaActualizado.id
-                  ? pedidoCocinaActualizado
+                p.id === pedidoCajaActualizado.id
+                  ? pedidoCajaActualizado
                   : p,
               ),
             );
           }
           return sortByFechaActualizacionAsc([
-            pedidoCocinaActualizado,
+            pedidoCajaActualizado,
             ...prev,
           ]);
         }
 
-        return prev.filter((p) => p.id !== pedidoCocinaActualizado.id);
+        return prev.filter((p) => p.id !== pedidoCajaActualizado.id);
       });
     } catch (error) {
       console.error("Error al actualizar estado:", error);
@@ -224,14 +224,14 @@ const CocinaPage = () => {
       <main className="cocina-content">
         <div className="container">
           <div className="cocina-controls">
-            <h2 className="cocina-title">Pedidos en Cocina</h2>
+            <h2 className="cocina-title">Pedidos en Caja</h2>
             <div className="cocina-filtros">
               <select
                 value={filtroEstado}
                 onChange={(e) => setFiltroEstado(e.target.value)}
                 className="form-select"
               >
-                <option value="preparando">En Preparación</option>
+                <option value="preparando">En Preparacion</option>
                 <option value="listo">Listos para Entregar</option>
               </select>
               <input
@@ -250,7 +250,7 @@ const CocinaPage = () => {
                   <div>
                     <h3 className="pedido-mesa">Pedido #{pedido.id}</h3>
                     <p className="pedido-mozo">
-                      Mesa {pedido.mesa_numero ?? pedido.mesa_id ?? "—"}
+                      Mesa {pedido.mesa_numero ?? pedido.mesa_id ?? "-"}
                     </p>
                   </div>
                   <span className={`badge ${getEstadoColor(pedido.estado_modulo)}`}>
@@ -259,14 +259,14 @@ const CocinaPage = () => {
                 </div>
 
                 <div className="pedido-items">
-                  <h4>Items de cocina:</h4>
+                  <h4>Items de caja (bebidas):</h4>
                   {(pedido.detalles_modulo ?? []).map((d, idx) => (
                     <div
                       key={idx}
                       className={`pedido-detalle ${getDetalleEstadoClass(d.estado)}`}
                     >
                       <div className="pedido-detalle-main">
-                        <span>{d.producto_nombre ?? "—"}</span>
+                        <span>{d.producto_nombre ?? "-"}</span>
                         <span>x{d.cantidad}</span>
                         <span>{d.precio} Bs</span>
                         <span className="pedido-detalle-estado">{d.estado}</span>
@@ -317,4 +317,4 @@ const CocinaPage = () => {
   );
 };
 
-export default CocinaPage;
+export default CajaPage;

@@ -35,13 +35,13 @@
   min-width: 170px;
 }
 
-.pedidos-grid {
+.cocina-container .pedidos-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: var(--spacing-lg);
 }
 
-.pedido-card {
+.cocina-container .pedido-card {
   background-color: var(--color-surface);
   border-radius: var(--border-radius-md);
   padding: var(--spacing-lg);
@@ -54,12 +54,12 @@
   z-index: 1;
 }
 
-.pedido-card:hover {
+.cocina-container .pedido-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
-.pedido-header {
+.cocina-container .pedido-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -68,87 +68,115 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.pedido-mesa {
+.cocina-container .pedido-mesa {
   font-size: var(--font-size-lg);
   font-weight: 600;
   color: var(--color-text);
   margin: 0;
 }
 
-.pedido-mozo {
+.cocina-container .pedido-mozo {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   margin: 0;
 }
 
-.pedido-items {
+.cocina-container .pedido-items {
   margin-bottom: var(--spacing-md);
 }
 
-.pedido-items h4 {
+.cocina-container .pedido-items h4 {
   font-size: var(--font-size-base);
   color: var(--color-text);
   margin-bottom: var(--spacing-sm);
 }
 
-.pedido-detalle {
+.cocina-container .pedido-detalle {
   display: grid;
-  grid-template-columns: 1.4fr auto auto auto;
-  gap: 0.5rem;
-  align-items: center;
-  padding: 0.45rem 0.6rem;
-  margin-bottom: 0.35rem;
+  gap: 0.35rem;
+  padding: 0.5rem 0.6rem;
+  margin-bottom: 0.4rem;
   border-radius: 6px;
   border-left: 4px solid transparent;
   font-size: 0.9rem;
 }
 
-.pedido-detalle-estado {
+.cocina-container .pedido-detalle-main {
+  display: grid;
+  grid-template-columns: 1.4fr auto auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.cocina-container .pedido-detalle-estado {
   justify-self: end;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
 }
 
-.cocina-detalle-nuevo {
+.cocina-container .pedido-detalle-nota {
+  font-size: 0.8rem;
+  color: #5f6b76;
+}
+
+.cocina-container .pedido-detalle-ajustes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.cocina-container .pedido-ajuste-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #ffe6e8;
+  color: #8a1f2b;
+  border: 1px solid #f3b8be;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.cocina-container .cocina-detalle-nuevo {
   background: #eafaf1;
   border-left-color: #2e9e5b;
 }
 
-.cocina-detalle-listo {
+.cocina-container .cocina-detalle-listo {
   background: #eceff1;
   border-left-color: #7f8a95;
 }
 
-.cocina-detalle-modificado {
+.cocina-container .cocina-detalle-modificado {
   background: #fff8dd;
   border-left-color: #d8a106;
 }
 
-.cocina-detalle-pendiente {
+.cocina-container .cocina-detalle-pendiente {
   background: #f8f9fa;
   border-left-color: #adb5bd;
 }
 
-.pedido-total {
+.cocina-container .pedido-total {
   font-size: var(--font-size-lg);
   font-weight: 600;
   color: var(--verde-intenso);
 }
 
-.pedido-timestamp {
+.cocina-container .pedido-timestamp {
   text-align: right;
   color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
 }
 
-.pedido-actions {
+.cocina-container .pedido-actions {
   display: flex;
   gap: var(--spacing-sm);
   margin-top: var(--spacing-md);
 }
 
-.pedido-actions button {
+.cocina-container .pedido-actions button {
   flex: 1;
   border: none;
   padding: 0.6rem 1rem;
@@ -163,7 +191,7 @@
   pointer-events: auto;
 }
 
-.cocina-vacio {
+.cocina-container .cocina-vacio {
   text-align: center;
   padding: var(--spacing-xxl);
   color: var(--color-text-secondary);
@@ -176,8 +204,17 @@
     align-items: flex-start;
   }
 
-  .pedidos-grid {
+  .cocina-container .pedidos-grid {
     grid-template-columns: 1fr;
+  }
+
+  .cocina-container .pedido-detalle-main {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .cocina-container .pedido-detalle-estado {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 }
 

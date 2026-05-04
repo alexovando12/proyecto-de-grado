@@ -141,6 +141,19 @@ export const pedidoService = {
       throw new Error(error.response?.data?.error || error.message);
     }
   },
+  actualizarEstadoDetalles: async (id, estado, detalleIds = []) => {
+    try {
+      const { data } = await api.put(`/pedidos/${Number(id)}/detalles/estado`, {
+        estado,
+        detalle_ids: (Array.isArray(detalleIds) ? detalleIds : [])
+          .map((v) => Number(v))
+          .filter((v) => Number.isInteger(v) && v > 0),
+      });
+      return data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || error.message);
+    }
+  },
   obtenerPorEstado: async (estado, fecha) => {
     try {
       const { data } = await api.get(`/pedidos/estado/${estado}`, {

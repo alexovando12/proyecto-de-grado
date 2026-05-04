@@ -11,7 +11,9 @@ const normalizarUnidad = (unidad = "") =>
 
 const esUnidadEntera = (unidad = "") => {
   const u = normalizarUnidad(unidad);
-  return u === "unidad" || u === "unidades" || u === "porcion" || u === "porciones";
+  return (
+    u === "unidad" || u === "unidades" || u === "porcion" || u === "porciones"
+  );
 };
 
 async function obtenerRecetaGeneral(client, producto_id) {
@@ -57,7 +59,9 @@ function normalizarIngredientesAjustes(ingredientes_ajustes, receta = []) {
 
     const recetaItem = recetaMap.get(ingredienteId);
     if (!recetaItem) {
-      throw new Error("Un ingrediente ajustado no pertenece a la receta del producto");
+      throw new Error(
+        "Un ingrediente ajustado no pertenece a la receta del producto",
+      );
     }
 
     if (esUnidadEntera(recetaItem.unidad) && !Number.isInteger(reducir)) {
@@ -80,7 +84,8 @@ function normalizarIngredientesAjustes(ingredientes_ajustes, receta = []) {
       ingrediente_unidad: recetaItem.unidad,
       cantidad_base: Number(recetaItem.base),
       cantidad_actual:
-        Number.isFinite(Number(item?.cantidad_actual)) && Number(item.cantidad_actual) >= 0
+        Number.isFinite(Number(item?.cantidad_actual)) &&
+        Number(item.cantidad_actual) >= 0
           ? Number(item.cantidad_actual)
           : Number(recetaItem.base - reducir),
       cantidad_reducida: reducir,
@@ -91,12 +96,14 @@ function normalizarIngredientesAjustes(ingredientes_ajustes, receta = []) {
 }
 
 function construirClaveDetalle(producto_id, ingredientes_ajustes = []) {
-  const ajustes = (Array.isArray(ingredientes_ajustes)
-    ? ingredientes_ajustes
-    : [])
+  const ajustes = (
+    Array.isArray(ingredientes_ajustes) ? ingredientes_ajustes : []
+  )
     .map((a) => ({
       ingrediente_id: Number(a?.ingrediente_id ?? a?.id ?? a?.ingredienteId),
-      cantidad_reducida: Number(a?.cantidad_reducida ?? a?.reducir ?? a?.cantidad ?? 0),
+      cantidad_reducida: Number(
+        a?.cantidad_reducida ?? a?.reducir ?? a?.cantidad ?? 0,
+      ),
     }))
     .filter((a) => Number.isFinite(a.ingrediente_id) && a.ingrediente_id > 0)
     .sort((a, b) => a.ingrediente_id - b.ingrediente_id);
@@ -367,7 +374,10 @@ exports.crearPedido = async (req, res) => {
 
     // Crear cada detalle y descontar stock
     for (const detalle of detalles) {
-      const recetaDetalle = await obtenerRecetaGeneral(client, detalle.producto_id);
+      const recetaDetalle = await obtenerRecetaGeneral(
+        client,
+        detalle.producto_id,
+      );
       const ingredientesAjustes = normalizarIngredientesAjustes(
         detalle.ingredientes_ajustes,
         recetaDetalle,
@@ -612,6 +622,116 @@ exports.actualizarEstadoPedido = async (req, res) => {
 };
 
 /* ------------------------------------------
+   🔹 Actualizar estado de detalles puntuales
+------------------------------------------- */
+exports.actualizarEstadoDetallesPedido = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { estado, detalle_ids } = req.body;
+
+    const estadoDestino = String(estado || "")
+      .toLowerCase()
+      .trim();
+    const ids = Array.isArray(detalle_ids)
+      ? detalle_ids
+          .map((v) => Number(v))
+          .filter((v) => Number.isInteger(v) && v > 0)
+      : [];
+
+    if (!estadoDestino || !["pendiente", "preparando", "listo"].includes(estadoDestino)) {
+      return res.status(400).json({
+        error: "Estado inválido para detalle. Usa pendiente, preparando o listo.",
+      });
+    }
+
+    if (ids.length === 0) {
+      return res.status(400).json({
+        error: "Debes enviar al menos un detalle_id para actualizar.",
+      });
+    }
+
+    await client.query("BEGIN");
+
+    const pedidoResult = await client.query(
+      `SELECT estado FROM pedidos WHERE id = $1 FOR UPDATE`,
+      [id],
+    );
+
+    if (pedidoResult.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    const estadoPedido = String(pedidoResult.rows[0].estado || "")
+      .toLowerCase()
+      .trim();
+
+    if (["cancelado", "cerrado"].includes(estadoPedido)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        error: "No se puede actualizar detalles de un pedido cancelado o cerrado.",
+      });
+    }
+
+    const detallesExistentes = await client.query(
+      `SELECT id FROM detalles_pedido WHERE pedido_id = $1 AND id = ANY($2::int[])`,
+      [id, ids],
+    );
+
+    if (detallesExistentes.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        error: "No se encontraron detalles del pedido para actualizar.",
+      });
+    }
+
+    const idsValidos = detallesExistentes.rows.map((r) => Number(r.id));
+
+    await client.query(
+      `UPDATE detalles_pedido SET estado = $1 WHERE pedido_id = $2 AND id = ANY($3::int[])`,
+      [estadoDestino, id, idsValidos],
+    );
+
+    const resumenEstados = await client.query(
+      `SELECT
+         COUNT(*)::int AS total,
+         COUNT(*) FILTER (WHERE estado = 'listo')::int AS listos
+       FROM detalles_pedido
+       WHERE pedido_id = $1`,
+      [id],
+    );
+
+    const totalDetalles = Number(resumenEstados.rows[0]?.total ?? 0);
+    const totalListos = Number(resumenEstados.rows[0]?.listos ?? 0);
+    const estadoPedidoNuevo =
+      totalDetalles > 0 && totalListos === totalDetalles ? "listo" : "preparando";
+
+    await client.query(
+      `UPDATE pedidos
+       SET estado = $1,
+           fecha_actualizacion = NOW()
+       WHERE id = $2`,
+      [estadoPedidoNuevo, id],
+    );
+
+    await client.query("COMMIT");
+
+    const pedidoCompleto = await Pedido.obtenerPorIdConDetalles(id);
+
+    if (req.io) req.io.emit("pedidoActualizado", pedidoCompleto);
+
+    res.json(pedidoCompleto);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("❌ ERROR actualizarEstadoDetallesPedido:", error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+};
+
+/* ------------------------------------------
    🔹 Actualizar detalles de un pedido (editar cantidades/agregar/eliminar)
 ------------------------------------------- */
 exports.actualizarDetallesPedido = async (req, res) => {
@@ -698,7 +818,10 @@ exports.actualizarDetallesPedido = async (req, res) => {
       const actual = actualesMap.get(detalleKey);
 
       if (actual) {
-        const recetaDetalle = await obtenerRecetaGeneral(client, det.producto_id);
+        const recetaDetalle = await obtenerRecetaGeneral(
+          client,
+          det.producto_id,
+        );
         const ajustesActuales = normalizarIngredientesAjustes(
           actual.ingredientes_ajustes,
           recetaDetalle,
@@ -816,7 +939,10 @@ exports.actualizarDetallesPedido = async (req, res) => {
       );
 
       if (!actualesMap.has(detalleKey)) {
-        const recetaDetalle = await obtenerRecetaGeneral(client, det.producto_id);
+        const recetaDetalle = await obtenerRecetaGeneral(
+          client,
+          det.producto_id,
+        );
         const ingredientesAjustes = normalizarIngredientesAjustes(
           det.ingredientes_ajustes,
           recetaDetalle,

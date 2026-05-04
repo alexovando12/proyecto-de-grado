@@ -72,7 +72,8 @@ class Pedido {
         d.notas,
         d.ingredientes_ajustes,
         d.estado AS detalle_estado,
-        pr.nombre AS producto_nombre
+        pr.nombre AS producto_nombre,
+        pr.categoria AS producto_categoria
       FROM pedidos p
       LEFT JOIN mesas m ON m.id = p.mesa_id
       LEFT JOIN usuarios u ON u.id = p.usuario_id
@@ -115,6 +116,7 @@ class Pedido {
           cantidad: row.cantidad,
           precio: row.precio,
           notas: row.notas,
+          producto_categoria: row.producto_categoria,
           ingredientes_ajustes: row.ingredientes_ajustes || [],
           estado: row.detalle_estado,
         });
@@ -144,7 +146,8 @@ class Pedido {
         d.notas,
         d.ingredientes_ajustes,
         d.estado AS detalle_estado,
-        pr.nombre AS producto_nombre
+        pr.nombre AS producto_nombre,
+        pr.categoria AS producto_categoria
       FROM pedidos p
       LEFT JOIN mesas m ON m.id = p.mesa_id
       LEFT JOIN usuarios u ON u.id = p.usuario_id
@@ -182,6 +185,7 @@ class Pedido {
           cantidad: row.cantidad,
           precio: row.precio,
           notas: row.notas,
+          producto_categoria: row.producto_categoria,
           ingredientes_ajustes: row.ingredientes_ajustes || [],
           estado: row.detalle_estado,
         });
@@ -213,7 +217,8 @@ class Pedido {
         d.notas,
         d.ingredientes_ajustes,
         d.estado AS detalle_estado,
-        pr.nombre AS producto_nombre
+        pr.nombre AS producto_nombre,
+        pr.categoria AS producto_categoria
       FROM pedidos p
       LEFT JOIN mesas m ON m.id = p.mesa_id
       LEFT JOIN usuarios u ON u.id = p.usuario_id
@@ -257,6 +262,7 @@ class Pedido {
           cantidad: row.cantidad,
           precio: row.precio,
           notas: row.notas,
+          producto_categoria: row.producto_categoria,
           ingredientes_ajustes: row.ingredientes_ajustes || [],
           estado: row.detalle_estado,
         });
@@ -286,7 +292,8 @@ class Pedido {
         d.notas,
         d.ingredientes_ajustes,
         d.estado AS detalle_estado,
-        pr.nombre AS producto_nombre
+        pr.nombre AS producto_nombre,
+        pr.categoria AS producto_categoria
       FROM pedidos p
       LEFT JOIN mesas m ON m.id = p.mesa_id
       LEFT JOIN usuarios u ON u.id = p.usuario_id
@@ -324,6 +331,7 @@ class Pedido {
           cantidad: row.cantidad,
           precio: row.precio,
           notas: row.notas,
+          producto_categoria: row.producto_categoria,
           ingredientes_ajustes: row.ingredientes_ajustes || [],
           estado: row.detalle_estado,
         });

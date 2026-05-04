@@ -267,6 +267,43 @@ const PedidosPage = () => {
         return estado || "—";
     }
   };
+
+  const getDetalleEstadoClass = (estado) => {
+    const estadoDetalle = String(estado || "").toLowerCase();
+    switch (estadoDetalle) {
+      case "nuevo":
+        return "pedido-detalle-nuevo";
+      case "listo":
+        return "pedido-detalle-listo";
+      case "entregado":
+        return "pedido-detalle-entregado";
+      case "actualizado":
+      case "modificado":
+        return "pedido-detalle-modificado";
+      default:
+        return "pedido-detalle-pendiente";
+    }
+  };
+
+  const getDetalleEstadoText = (estado) => {
+    const estadoDetalle = String(estado || "").toLowerCase();
+    switch (estadoDetalle) {
+      case "nuevo":
+        return "Nuevo";
+      case "listo":
+        return "Listo";
+      case "entregado":
+        return "Entregado";
+      case "actualizado":
+      case "modificado":
+        return "Actualizado";
+      case "preparando":
+        return "Preparando";
+      default:
+        return "Pendiente";
+    }
+  };
+
   const pedidosFiltrados = pedidos.filter((pedido) => {
     const texto = searchPedido.toLowerCase();
 
@@ -399,21 +436,40 @@ const PedidosPage = () => {
                 <div className="pedido-card-body">
                   <h4 className="pedido-detalles-title">Detalles:</h4>
                   {(pedido.detalles ?? []).map((detalle, index) => (
-                    <div key={index} className="pedido-detalle">
-                      <span className="pedido-detalle-nombre">
-                        {detalle.producto_nombre ?? "—"}
-                      </span>
-                      <span className="pedido-detalle-cantidad">
-                        x{detalle.cantidad}
-                      </span>
-                      <span className="pedido-detalle-precio">
-                        {toMoney(detalle.precio * detalle.cantidad)}
-                      </span>
+                    <div
+                      key={index}
+                      className={`pedido-detalle ${getDetalleEstadoClass(detalle.estado)}`}
+                    >
+                      <div className="pedido-detalle-main">
+                        <span className="pedido-detalle-nombre">
+                          {detalle.producto_nombre ?? "—"}
+                        </span>
+                        <span className="pedido-detalle-cantidad">
+                          x{detalle.cantidad}
+                        </span>
+                        <span className="pedido-detalle-precio">
+                          {toMoney(detalle.precio * detalle.cantidad)}
+                        </span>
+                        <span className="pedido-detalle-estado">
+                          {getDetalleEstadoText(detalle.estado)}
+                        </span>
+                      </div>
                       {detalle.notas && (
                         <span className="pedido-detalle-notas">
                           Nota: {detalle.notas}
                         </span>
                       )}
+
+                      {Array.isArray(detalle.ingredientes_ajustes) &&
+                        detalle.ingredientes_ajustes.length > 0 && (
+                          <div className="pedido-detalle-ajustes">
+                            {detalle.ingredientes_ajustes.map((aj, ajIdx) => (
+                              <span key={ajIdx} className="pedido-ajuste-pill">
+                                Sin {aj.ingrediente_nombre || `#${aj.ingrediente_id}`}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                     </div>
                   ))}
                 </div>

@@ -11,6 +11,7 @@ import MesasPage from "./pages/MesasPage.jsx";
 import ProductosPage from "./pages/ProductosPage.jsx";
 import PedidosPage from "./pages/PedidosPage.jsx";
 import CocinaPage from "./pages/CocinaPage.jsx";
+import CajaPage from "./pages/CajaPage.jsx";
 import InventarioPage from "./pages/InventarioPage.jsx";
 import ReportesPage from "./pages/ReportesPage.jsx";
 import UsuariosPage from "./pages/UsuariosPage.jsx";
@@ -19,7 +20,7 @@ import Header from "./components/layout/Header.jsx";
 const ROLE_DEFAULT_PATH = {
   admin: "/reportes",
   mozo: "/pedidos",
-  caja: "/pedidos",
+  caja: "/caja",
   cocina: "/cocina",
 };
 
@@ -137,6 +138,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["admin", "cocina"]}>
                   <CocinaPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/caja"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "caja"]}>
+                  <CajaPage />
                 </ProtectedRoute>
               }
             />

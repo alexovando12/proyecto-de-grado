@@ -9,7 +9,7 @@
   background-color: #212529;
   color: #fff;
   padding: 1rem 2rem;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .pedidos-header-content {
@@ -33,7 +33,7 @@
   padding: 1rem;
   background-color: #fff;
   border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   max-width: 1200px;
 }
 
@@ -56,9 +56,11 @@
 .pedido-card {
   background-color: #fff;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 
   /* 🔧 Fix */
   position: relative;
@@ -67,7 +69,7 @@
 
 .pedido-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
 }
 
 .pedido-card-header {
@@ -109,24 +111,38 @@
   margin-bottom: 0.5rem;
 }
 
-.pedido-detalle {
-  display: flex;
-  justify-content: space-between;
+.pedidos-container .pedido-detalle {
+  display: grid;
+  gap: 0.4rem;
   align-items: center;
-  padding: 0.4rem 0;
-  border-bottom: 1px dashed #e9ecef;
+  padding: 0.55rem 0.6rem;
+  margin-bottom: 0.45rem;
+  border-radius: 8px;
+  border-left: 4px solid transparent;
+  border-bottom: 1px solid #eceff3;
 }
 
-.pedido-detalle:last-child {
-  border-bottom: none;
+.pedidos-container .pedido-detalle:last-child {
+  margin-bottom: 0;
 }
 
-.pedido-detalle-nombre {
+.pedidos-container .pedido-detalle-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) auto auto auto;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.pedidos-container .pedido-detalle-nombre {
   font-weight: 500;
   color: #343a40;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.pedido-detalle-cantidad {
+.pedidos-container .pedido-detalle-cantidad {
   background-color: #e6f4ea;
   color: #28a745;
   padding: 0.2rem 0.6rem;
@@ -135,16 +151,66 @@
   font-weight: bold;
 }
 
-.pedido-detalle-precio {
+.pedidos-container .pedido-detalle-precio {
   font-weight: 600;
   color: #007bff;
 }
 
-.pedido-detalle-notas {
+.pedidos-container .pedido-detalle-estado {
+  justify-self: end;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pedidos-container .pedido-detalle-notas {
   font-size: 0.8rem;
   color: #6c757d;
   font-style: italic;
-  margin-left: 1rem;
+  padding-left: 0.1rem;
+}
+
+.pedidos-container .pedido-detalle-ajustes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.pedido-ajuste-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #f1f3f5;
+  color: #495057;
+  border: 1px solid #d7dce1;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.pedidos-container .pedido-detalle-nuevo {
+  background: #eafaf1;
+  border-left-color: #2e9e5b;
+}
+
+.pedidos-container .pedido-detalle-listo {
+  background: #ecf8ff;
+  border-left-color: #228be6;
+}
+
+.pedidos-container .pedido-detalle-entregado {
+  background: #eceff1;
+  border-left-color: #7f8a95;
+}
+
+.pedidos-container .pedido-detalle-modificado {
+  background: #fff8dd;
+  border-left-color: #d8a106;
+}
+
+.pedidos-container .pedido-detalle-pendiente {
+  background: #f8f9fa;
+  border-left-color: #adb5bd;
 }
 
 /* ======= Footer ======= */
@@ -183,16 +249,42 @@
 }
 
 /* ======= Botones ======= */
-.btn { padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; border: none; cursor: pointer; }
-.btn-sm { font-size: 0.75rem; }
+.btn {
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+.btn-sm {
+  font-size: 0.75rem;
+}
 
-.btn-primary { background-color: #007bff; color: white; }
-.btn-success { background-color: #28a745; color: white; }
-.btn-danger  { background-color: #dc3545; color: white; }
-.btn-warning { background-color: #ffc107; color: #212529; }
-.btn-info    { background-color: #17a2b8; color: white; }
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+.btn-success {
+  background-color: #28a745;
+  color: white;
+}
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+}
+.btn-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+.btn-info {
+  background-color: #17a2b8;
+  color: white;
+}
 
-.btn:hover { opacity: 0.9; }
+.btn:hover {
+  opacity: 0.9;
+}
 
 .producto-card-disabled {
   opacity: 0.55;
@@ -219,12 +311,30 @@
 }
 
 /* ======= Badges de estado ======= */
-.badge-warning { background-color: #ffc107; color: #212529; }
-.badge-info    { background-color: #17a2b8; color: white; }
-.badge-primary { background-color: #007bff; color: white; }
-.badge-success { background-color: #28a745; color: white; }
-.badge-secondary { background-color: #6c757d; color: white; }
-.badge-danger { background-color: #dc3545; color: white; }
+.badge-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+.badge-info {
+  background-color: #17a2b8;
+  color: white;
+}
+.badge-primary {
+  background-color: #007bff;
+  color: white;
+}
+.badge-success {
+  background-color: #28a745;
+  color: white;
+}
+.badge-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+.badge-danger {
+  background-color: #dc3545;
+  color: white;
+}
 
 /* ======= Responsive ======= */
 @media (max-width: 768px) {
@@ -268,9 +378,69 @@
   color: #0d6efd;
 }
 
+.pedido-item-ajustes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.pedido-item-ajuste-row {
+  display: flex;
+  align-items: center;
+}
+
+.pedido-item-ajuste-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.pedido-item-ajuste-main label {
+  font-weight: 600;
+  color: #2f353b;
+}
+
+.pedido-item-ajuste-meta {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.pedido-item-ajuste-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.pedido-item-ajuste-row {
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+.pedido-item-ajustes .pedido-ajuste-pill {
+  background: #f8d7da;
+  border-color: #efbac1;
+  color: #842029;
+}
+
 @media (max-width: 992px) {
   .pedido-form-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .pedidos-container .pedido-detalle-main {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .pedidos-container .pedido-detalle-estado {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 }
 
