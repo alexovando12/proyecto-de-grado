@@ -20,7 +20,9 @@ const normalizarUnidad = (unidad = "") =>
     .trim();
 const esUnidadEntera = (unidad = "") => {
   const u = normalizarUnidad(unidad);
-  return u === "unidad" || u === "unidades" || u === "porcion" || u === "porciones";
+  return (
+    u === "unidad" || u === "unidades" || u === "porcion" || u === "porciones"
+  );
 };
 
 const normalizarAjustes = (ajustes) => {
@@ -140,7 +142,8 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada, pedidoExistente }) => {
         const ajustesCanon = normalizarAjustes(item.ingredientes_ajustes);
         return {
           ...item,
-          item_uid: item.item_uid || construirItemUid(item.producto_id, ajustesCanon),
+          item_uid:
+            item.item_uid || construirItemUid(item.producto_id, ajustesCanon),
           tipo_inventario: item.tipo_inventario ?? producto.tipo_inventario,
           receta:
             Array.isArray(item.receta) && item.receta.length > 0
@@ -508,16 +511,38 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada, pedidoExistente }) => {
     });
   };
 
-  const cambiarAjusteEditor = (ingredienteId, valorRaw) => {
+  const toggleQuitarIngredienteEditor = (ingredienteId) => {
     setEditorAjustes((prev) => {
-      const nuevo = (Array.isArray(prev.ajustes) ? prev.ajustes : []).map((a) => {
+      const ajustesPrev = Array.isArray(prev.ajustes) ? prev.ajustes : [];
+      const totalIngredientes = ajustesPrev.length;
+
+      const nuevo = ajustesPrev.map((a) => {
         if (Number(a.ingrediente_id) !== Number(ingredienteId)) return a;
-        const unidad = a.ingrediente_unidad || "";
+
         const base = Number(a.cantidad_base ?? 0);
-        let valor = Number(String(valorRaw ?? "0").replace(",", "."));
-        valor = normalizarPorPasoUnidad(valor, unidad);
-        if (Number.isFinite(base) && valor > base) valor = base;
-        return { ...a, cantidad_actual: valor, cantidad_reducida: base - valor };
+        const cantidadActual = Number(a.cantidad_actual ?? base ?? 0);
+
+        if (totalIngredientes <= 1) return a;
+
+        const quiereQuitar = cantidadActual > 0;
+
+        if (quiereQuitar) {
+          const activos = ajustesPrev.filter(
+            (aj) => Number(aj.cantidad_actual ?? aj.cantidad_base ?? 0) > 0,
+          ).length;
+          if (activos <= 1) {
+            alert("No puedes quitar todos los ingredientes del plato.");
+            return a;
+          }
+        }
+
+        const nuevoActual = quiereQuitar ? 0 : base;
+
+        return {
+          ...a,
+          cantidad_actual: nuevoActual,
+          cantidad_reducida: base - nuevoActual,
+        };
       });
       return { ...prev, ajustes: nuevo };
     });
@@ -527,9 +552,8 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada, pedidoExistente }) => {
     const producto = editorAjustes.producto;
     if (!producto) return;
 
-    const ajustesListos = (Array.isArray(editorAjustes.ajustes)
-      ? editorAjustes.ajustes
-      : []
+    const ajustesListos = (
+      Array.isArray(editorAjustes.ajustes) ? editorAjustes.ajustes : []
     ).map((a) => ({
       ingrediente_id: Number(a.ingrediente_id),
       ingrediente_nombre: a.ingrediente_nombre,
@@ -950,19 +974,21 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada, pedidoExistente }) => {
                                   >
                                     Agregar
                                   </button>
-                                  {esGeneral && (
-                                    <button
-                                      type="button"
-                                      className="btn btn-sm btn-secondary"
-                                      disabled={bloqueado}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        abrirEditorReceta(producto);
-                                      }}
-                                    >
-                                      Editar
-                                    </button>
-                                  )}
+                                  {esGeneral &&
+                                    Array.isArray(producto.receta) &&
+                                    producto.receta.length > 1 && (
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-secondary"
+                                        disabled={bloqueado}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          abrirEditorReceta(producto);
+                                        }}
+                                      >
+                                        Editar
+                                      </button>
+                                    )}
                                 </div>
                               </div>
                             );
@@ -987,7 +1013,10 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada, pedidoExistente }) => {
               <>
                 <div className="pedido-items">
                   {items.map((item, index) => (
-                    <div key={item.item_uid || `${item.producto_id}-${index}`} className="pedido-item">
+                    <div
+                      key={item.item_uid || `${item.producto_id}-${index}`}
+                      className="pedido-item"
+                    >
                       <div className="pedido-item-info">
                         <span className="pedido-item-nombre">
                           {item.nombre}
@@ -1017,14 +1046,10 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada, pedidoExistente }) => {
                                 key={`${item.item_uid}-${aj.ingrediente_id}`}
                                 className="pedido-item-ajuste-row"
                               >
-                                <label>
-                                  {aj.ingrediente_nombre || `Ingrediente ${aj.ingrediente_id}`}:
-                                </label>
-                                <span>
-                                  -{aj.cantidad_reducida}
-                                  {aj.ingrediente_unidad
-                                    ? ` ${aj.ingrediente_unidad}`
-                                    : ""}
+                                <span className="pedido-ajuste-pill">
+                                  Sin{" "}
+                                  {aj.ingrediente_nombre ||
+                                    `Ingrediente ${aj.ingrediente_id}`}
                                 </span>
                               </div>
                             ))}
@@ -1096,7 +1121,11 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada, pedidoExistente }) => {
                 setItems([]);
                 setNotas("");
                 setSelectedMesa("");
-                setEditorAjustes({ abierto: false, producto: null, ajustes: [] });
+                setEditorAjustes({
+                  abierto: false,
+                  producto: null,
+                  ajustes: [],
+                });
               }}
               disabled={loading}
             >
@@ -1134,7 +1163,11 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada, pedidoExistente }) => {
                   type="button"
                   className="btn btn-secondary"
                   onClick={() =>
-                    setEditorAjustes({ abierto: false, producto: null, ajustes: [] })
+                    setEditorAjustes({
+                      abierto: false,
+                      producto: null,
+                      ajustes: [],
+                    })
                   }
                 >
                   Cancelar
@@ -1150,7 +1183,8 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada, pedidoExistente }) => {
             }
           >
             <p className="pedido-categoria-empty" style={{ marginTop: 0 }}>
-              La cantidad inicia en la receta base. Reduce solo lo necesario.
+              Puedes quitar ingredientes completos del plato. Si el plato tiene
+              un solo ingrediente, no se puede quitar.
             </p>
             <div className="pedido-item-ajustes">
               {(Array.isArray(editorAjustes.ajustes)
@@ -1158,31 +1192,64 @@ const PedidoForm = ({ onPedidoCreado, mesaSeleccionada, pedidoExistente }) => {
                 : []
               ).map((aj) => {
                 const unidad = aj.ingrediente_unidad || "";
-                const esEntero = esUnidadEntera(unidad);
+                const base = Number(aj.cantidad_base ?? 0);
+                const actual = Number(aj.cantidad_actual ?? base ?? 0);
+                const ingredienteQuitado = actual <= 0;
+                const activos = (
+                  Array.isArray(editorAjustes.ajustes)
+                    ? editorAjustes.ajustes
+                    : []
+                ).filter(
+                  (aj) =>
+                    Number(aj.cantidad_actual ?? aj.cantidad_base ?? 0) > 0,
+                ).length;
+
+                const puedeQuitar =
+                  (Array.isArray(editorAjustes.ajustes)
+                    ? editorAjustes.ajustes.length
+                    : 0) > 1 &&
+                  (ingredienteQuitado || activos > 1);
+
                 return (
                   <div
                     key={`editor-${aj.ingrediente_id}`}
                     className="pedido-item-ajuste-row"
                   >
-                    <label>
-                      {aj.ingrediente_nombre} (base: {aj.cantidad_base}
-                      {unidad ? ` ${unidad}` : ""})
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max={
-                        Number.isFinite(Number(aj.cantidad_base))
-                          ? Number(aj.cantidad_base)
-                          : undefined
-                      }
-                      step={esEntero ? "1" : "0.1"}
-                      value={Number(aj.cantidad_actual ?? aj.cantidad_base ?? 0)}
-                      onChange={(e) =>
-                        cambiarAjusteEditor(aj.ingrediente_id, e.target.value)
-                      }
-                      className="pedido-item-cantidad"
-                    />
+                    <div className="pedido-item-ajuste-main">
+                      <label>{aj.ingrediente_nombre}</label>
+                      <span className="pedido-item-ajuste-meta">
+                        Base: {aj.cantidad_base}
+                        {unidad ? ` ${unidad}` : ""}
+                      </span>
+                    </div>
+                    <div className="pedido-item-ajuste-actions">
+                      {ingredienteQuitado && (
+                        <span className="pedido-ajuste-pill">
+                          Sin {aj.ingrediente_nombre}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${ingredienteQuitado ? "btn-secondary" : "btn-danger"}`}
+                        disabled={!puedeQuitar}
+                        onClick={() =>
+                          toggleQuitarIngredienteEditor(aj.ingrediente_id)
+                        }
+                        title={
+                          puedeQuitar
+                            ? ingredienteQuitado
+                              ? "Restaurar ingrediente"
+                              : "Quitar ingrediente"
+                            : (Array.isArray(editorAjustes.ajustes)
+                                  ? editorAjustes.ajustes.length
+                                  : 0) <= 1
+                              ? "No se puede quitar cuando el plato tiene un solo ingrediente"
+                              : "Debe quedar al menos un ingrediente en el plato"
+                        }
+                      >
+                        {ingredienteQuitado ? "Restaurar" : "Quitar"}
+                      </button>
+                    </div>
                   </div>
                 );
               })}
