@@ -1,0 +1,194 @@
+.pedidos-header {
+  background-color: var(--primary-color);
+  color: var(--text-light);
+  padding: var(--spacing-md) var(--spacing-xl);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pedidos-title {
+  font-size: var(--font-size-xxl);
+  font-weight: 700;
+  margin: 0;
+}
+
+.pedidos-subtitle {
+  font-size: var(--font-size-base);
+  opacity: 0.8;
+  margin: 0;
+}
+
+.pedidos-user {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.pedidos-content {
+  padding: var(--spacing-xl);
+}
+
+.pedidos-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.pedidos-filters {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+.pedidos-search {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.pedidos-search-input {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) 2.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-base);
+}
+
+.pedidos-search-input:focus {
+  outline: none;
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.25);
+}
+
+.pedidos-search-icon {
+  position: absolute;
+  right: var(--spacing-sm);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+}
+
+.pedidos-status-filters {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.pedidos-status-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.pedidos-status-btn:hover {
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+}
+
+.pedidos-status-btn.active {
+  background-color: var(--secondary-color);
+  color: var(--text-light);
+  border-color: var(--secondary-color);
+}
+
+.pedidos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.pedido-card {
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--box-shadow);
+  overflow: hidden;
+  transition: var(--transition);
+}
+
+.pedido-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.pedido-header {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pedido-number {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.pedido-status {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.pedido-status-pendiente {
+  background-color: var(--warning-color);
+  color: var(--text-light);
+}
+
+.pedido-status-confirmado {
+  background-color: var(--info-color);
+  color: var(--text-light);
+}
+
+.pedido-status-preparando {
+  background-color: var(--secondary-color);
+  color: var(--text-light);
+}
+
+.pedido-status-listo {
+  background-color: var(--success-color);
+  color: var(--text-light);
+}
+
+.pedido-status-entregado {
+  background-color: var(--primary-color);
+  color: var(--text-light);
+}
+
+.pedido-body {
+  padding: var(--spacing-md);
+}
+
+.pedido-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-md);
+}
+
+.pedido-mesa {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.pedido-total {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--success-color);
+}
+
+.pedido-detalles {
+  margin-bottom: var(--spacing-md);
+}
+
+.pedido-detalle-item {
+  display: flex;
+  justify-content: space-between;}
