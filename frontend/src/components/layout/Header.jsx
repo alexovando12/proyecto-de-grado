@@ -11,6 +11,7 @@ const ROLE_MODULES = {
     { to: "/pedidos", label: "Pedidos" },
     { to: "/cocina", label: "Cocina" },
     { to: "/inventario", label: "Inventario" },
+    { to: "/caja", label: "Caja" },
   ],
   mozo: [{ to: "/pedidos", label: "Pedidos" }],
   caja: [{ to: "/pedidos", label: "Pedidos" }],
