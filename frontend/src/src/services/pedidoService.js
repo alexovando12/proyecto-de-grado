@@ -36,9 +36,7 @@ const normalizarAjustes = (ajustes) => {
 };
 
 export const pedidoService = {
-  // =========================
-  // OBTENER
-  // =========================
+
   obtenerTodos: async (fecha) => {
     try {
       const { data } = await api.get("/pedidos", {
@@ -55,9 +53,7 @@ export const pedidoService = {
     return data;
   },
 
-  // =========================
-  // CREAR PEDIDO 🔥
-  // =========================
+
   crear: async (pedido) => {
     try {
       if (!pedido.mesa_id) {
@@ -87,9 +83,7 @@ export const pedidoService = {
       throw new Error(error.response?.data?.error || error.message);
     }
   },
-  // =========================
-  // EDITAR PEDIDO 🔥🔥🔥
-  // =========================
+
   actualizar: async (id, pedido) => {
     try {
       if (!Array.isArray(pedido.detalles) || pedido.detalles.length === 0) {
@@ -116,9 +110,7 @@ export const pedidoService = {
     }
   },
 
-  // =========================
-  // ELIMINAR PEDIDO 🔥🔥🔥
-  // =========================
+
   eliminar: async (id) => {
     try {
       const { data } = await api.delete(`/pedidos/${Number(id)}`);
@@ -128,9 +120,7 @@ export const pedidoService = {
     }
   },
 
-  // =========================
-  // ESTADOS
-  // =========================
+
   actualizarEstado: async (id, estado) => {
     try {
       const { data } = await api.put(`/pedidos/${Number(id)}/estado`, {
@@ -192,7 +182,7 @@ export const pedidoService = {
       return data;
     } catch (error) {
       console.warn("Error mesa", mesaId);
-      return []; // 🔥 EVITA QUE REVIENTE TODO
+      return [];
     }
   },
 };

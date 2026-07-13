@@ -1,9 +1,8 @@
 // src/services/mesaService.js
 import api from './api';
 
-// ❗ Cambia estos flags a true si tu backend expone esos endpoints:
-export const HAS_MESAS_ESTADO_ENDPOINT = false; // PUT /mesas/:id/estado
-export const HAS_MESAS_BY_ID_ENDPOINT = false;  // GET /mesas/:id
+export const HAS_MESAS_ESTADO_ENDPOINT = false; 
+export const HAS_MESAS_BY_ID_ENDPOINT = false; 
 
 const normalizeMesa = (m) => ({
   ...m,
@@ -11,7 +10,7 @@ const normalizeMesa = (m) => ({
 });
 
 export const mesaService = {
-  // Todas las mesas (si tu backend usa otra ruta, cámbiala aquí)
+
   obtenerTodas: async () => {
     try {
       const { data } = await api.get('/mesas');
@@ -21,13 +20,11 @@ export const mesaService = {
     }
   },
 
-  // Disponibles: filtramos en cliente para no depender de rutas especiales
   obtenerDisponibles: async () => {
     const todas = await mesaService.obtenerTodas();
     return (todas || []).filter((m) => (m?.estado ?? 'disponible') === 'disponible');
   },
 
-  // Si tu backend NO tiene /mesas/:id, resolvemos con obtenerTodas() y filtramos
   obtenerPorId: async (id) => {
     if (HAS_MESAS_BY_ID_ENDPOINT) {
       try {
@@ -61,10 +58,8 @@ export const mesaService = {
     return data;
   },
 
-  // Actualizar estado: solo si el endpoint existe; si no, se omite sin 404.
   actualizarEstado: async (id, estado) => {
     if (!HAS_MESAS_ESTADO_ENDPOINT) {
-      // Silenciamos de forma explícita para no disparar 404s
       return { ok: false, skipped: true };
     }
     const idNum = Number(id);

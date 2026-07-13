@@ -25,7 +25,6 @@ class MovimientoInventario {
         return result.rows;
     }
 
-    // CORREGIDO: Método para crear movimiento con todos los campos necesarios
     static async crear(movimiento) {
         const { 
             tipo_inventario, 

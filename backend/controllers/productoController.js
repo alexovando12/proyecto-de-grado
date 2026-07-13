@@ -81,7 +81,7 @@ exports.crearProducto = async (req, res) => {
       categoria,
       tipo_inventario,
       receta,
-      producto_preparado_id, // ← nuevo parámetro opcional
+      producto_preparado_id,
     } = req.body;
     const nombreNormalizado = String(nombre || "").trim();
 
@@ -97,7 +97,6 @@ exports.crearProducto = async (req, res) => {
 
     if (tipo_inventario === "preparado") {
       if (producto_preparado_id) {
-        // Validar que exista
         const valid = await client.query(
           "SELECT id FROM productos_preparados WHERE id = $1",
           [producto_preparado_id],
@@ -110,7 +109,6 @@ exports.crearProducto = async (req, res) => {
         }
         productoPreparadoId = producto_preparado_id;
       } else {
-        // Buscar por nombre como respaldo
         const prepResult = await client.query(
           `SELECT id FROM productos_preparados WHERE LOWER(nombre) = LOWER($1) LIMIT 1`,
           [nombreNormalizado],
@@ -118,7 +116,6 @@ exports.crearProducto = async (req, res) => {
         if (prepResult.rowCount > 0) {
           productoPreparadoId = prepResult.rows[0].id;
         } else {
-          // Podrías exigir que lo seleccione si quieres
           // return res.status(400).json({ error: 'Debes seleccionar un producto preparado existente' });
         }
       }
@@ -140,7 +137,6 @@ exports.crearProducto = async (req, res) => {
 
     const productoId = productoResult.rows[0].id;
 
-    // Insertar ingredientes si hay receta
     if (Array.isArray(receta) && receta.length > 0) {
       for (const item of receta) {
         await client.query(

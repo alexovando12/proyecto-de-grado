@@ -1,6 +1,5 @@
 const pool = require("../config/db");
 
-// 🔥 VENTAS
 exports.generarReporteVentas = async (req, res) => {
   try {
     const { fechaInicio, fechaFin } = req.query;
@@ -39,7 +38,6 @@ exports.generarReporteVentas = async (req, res) => {
   }
 };
 
-// 🔥 PRODUCTOS POPULARES (ARREGLADO)
 exports.generarReporteProductosPopulares = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -61,7 +59,6 @@ exports.generarReporteProductosPopulares = async (req, res) => {
   }
 };
 
-// 🔥 INVENTARIO (SEGURO)
 exports.generarReporteInventario = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -86,7 +83,6 @@ exports.generarReporteInventario = async (req, res) => {
   }
 };
 
-// 🔥 MOVIMIENTOS (ARREGLADO)
 exports.generarReporteMovimientos = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -108,7 +104,6 @@ exports.generarReporteMovimientos = async (req, res) => {
   }
 };
 
-// 🔥 DETALLE PEDIDOS (ARREGLADO)
 exports.generarReporteDetallePedidos = async (req, res) => {
   try {
     const result = await pool.query(`

@@ -78,11 +78,11 @@ const CocinaPage = () => {
     cargarPedidos();
 
     const onConnect = () => {
-      console.log("✅ Socket cocina conectado:", socket.id);
+      console.log(" Socket cocina conectado:", socket.id);
     };
 
     const onDisconnect = (reason) => {
-      console.log("❌ Socket cocina desconectado:", reason);
+      console.log(" Socket cocina desconectado:", reason);
     };
 
     const onPedidoCreado = () => {

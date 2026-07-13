@@ -17,13 +17,9 @@ class Ingrediente {
     return result.rows[0];
   }
 
-  // =========================
-  // CREAR INGREDIENTE
-  // =========================
   static async crear(ingrediente) {
     let { nombre, unidad, stock_actual, stock_minimo } = ingrediente;
 
-    // 🔥 VALIDACIONES
     if (!nombre || typeof nombre !== 'string' || !nombre.trim()) {
       throw new Error('Nombre inválido');
     }
@@ -53,10 +49,8 @@ class Ingrediente {
 
     return result.rows[0];
   }
+  
 
-  // =========================
-  // ACTUALIZAR INGREDIENTE
-  // =========================
 static async actualizar(id, ingrediente) {
   const client = await pool.connect();
 
@@ -65,7 +59,6 @@ static async actualizar(id, ingrediente) {
 
     const { nombre, unidad, stock_minimo, ajuste } = ingrediente;
 
-    // 🔥 VALIDACIONES
     if (!nombre || !nombre.trim()) {
       throw new Error('Nombre inválido');
     }
@@ -84,7 +77,6 @@ static async actualizar(id, ingrediente) {
       throw new Error('Cantidad demasiado grande');
     }
 
-    // 🔥 OBTENER STOCK ACTUAL
     const actual = await client.query(
       'SELECT stock_actual FROM ingredientes WHERE id = $1 FOR UPDATE',
       [id]
@@ -102,7 +94,6 @@ static async actualizar(id, ingrediente) {
       throw new Error('El stock no puede ser negativo');
     }
 
-    // 🔥 UPDATE FINAL
     const result = await client.query(
       `UPDATE ingredientes
        SET nombre = $1,
@@ -131,16 +122,12 @@ static async actualizar(id, ingrediente) {
     client.release();
   }
 }
-  // =========================
-  // ELIMINAR (SOFT DELETE)
-  // =========================
 static async eliminar(id) {
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
-    // 🔥 VERIFICAR SI ESTÁ EN RECETAS
     const uso = await client.query(
       'SELECT COUNT(*) FROM recetas WHERE ingrediente_id = $1',
       [id]
@@ -152,7 +139,6 @@ static async eliminar(id) {
       throw new Error('No puedes eliminar este ingrediente porque está siendo usado en recetas');
     }
 
-    // 🔥 ELIMINAR SI NO ESTÁ EN USO
     const result = await client.query(
       'DELETE FROM ingredientes WHERE id = $1 RETURNING *',
       [id]
@@ -170,9 +156,6 @@ static async eliminar(id) {
   }
 }
 
-  // =========================
-  // ACTUALIZAR STOCK (PRO)
-  // =========================
   static async actualizarStock(id, cantidad, tipo) {
     const client = await pool.connect();
 
@@ -234,9 +217,6 @@ static async eliminar(id) {
     }
   }
 
-  // =========================
-  // VERIFICAR STOCK
-  // =========================
   static async verificarStock(ingredientesNecesarios) {
     const resultados = [];
 
@@ -266,9 +246,6 @@ static async eliminar(id) {
     return resultados;
   }
 
-  // =========================
-  // STOCK BAJO
-  // =========================
   static async obtenerBajoStock() {
     const result = await pool.query(
       `SELECT * 

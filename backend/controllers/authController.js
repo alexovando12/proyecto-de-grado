@@ -7,14 +7,13 @@ exports.login = async (req, res) => {
     console.log('=== INICIO LOGIN ===');
     console.log('Body:', req.body);
     
-    // Estandarizar: siempre usar 'password'
     const email = req.body.email;
-    const password = req.body.password; // Siempre usar 'password'
+    const password = req.body.password; 
     
     console.log('Email:', email);
     console.log('Password:', password ? 'proporcionado' : 'no proporcionado');
     
-    // Validación básica
+
     if (!email || !password) {
       console.log('❌ Faltan datos requeridos');
       return res.status(400).json({ 
@@ -42,7 +41,6 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: 'Usuario inactivo' });
     }
     
-    // Verificar la contraseña
     console.log('🔐 Verificando contraseña...');
     console.log('Contraseña enviada:', password);
     console.log('Hash en BD:', usuario.contrasena);
@@ -61,7 +59,6 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
     
-    // Generar token
     console.log('🔑 Generando token...');
     let token;
     try {

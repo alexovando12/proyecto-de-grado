@@ -139,7 +139,6 @@ exports.actualizarUsuario = async (req, res) => {
           .json({ error: "La contrasena no puede ser vacía" });
       }
 
-      // Se usa el mismo algoritmo que en login (bcrypt): hash al guardar, compare al autenticar.
       contrasena = bcrypt.hashSync(passwordPlano, 10);
     }
 

@@ -1,5 +1,5 @@
 const pool = require("../config/db");
-const Receta = require("./Receta"); // 👈 Importamos el modelo de recetas
+const Receta = require("./Receta");
 
 class Producto {
   static async obtenerTodos() {

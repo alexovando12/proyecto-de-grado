@@ -14,14 +14,12 @@ class Mesa {
 static async crear(mesa) {
   const { capacidad } = mesa;
 
-  // 🔥 VALIDACIÓN
   const capacidadNum = Number(capacidad);
 
   if (isNaN(capacidadNum) || capacidadNum < 1 || capacidadNum > 20) {
     throw new Error('Capacidad inválida (1 - 20 personas)');
   }
 
-  // 🔥 Obtener siguiente número
   const resultNumero = await pool.query(
     'SELECT MAX(numero::int) as max FROM mesas'
   );
@@ -29,7 +27,6 @@ static async crear(mesa) {
   const maxNumero = Number(resultNumero.rows[0].max) || 0;
   const nuevoNumero = maxNumero + 1;
 
-  // 🔥 Insertar
   const result = await pool.query(
     'INSERT INTO mesas (numero, capacidad) VALUES ($1, $2) RETURNING *',
     [nuevoNumero, capacidadNum]

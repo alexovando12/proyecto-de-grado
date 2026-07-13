@@ -41,9 +41,7 @@ const getUniqueNameErrorMessage = (error) => {
   return "Ya existe un registro con ese nombre. Usa un nombre diferente.";
 };
 
-// =========================
-// CRUD de Ingredientes
-// =========================
+
 exports.crearIngrediente = async (req, res) => {
   try {
     const { nombre, unidad, stock_actual, stock_minimo } = req.body;
@@ -101,14 +99,13 @@ exports.eliminarIngrediente = async (req, res) => {
       return res.status(404).json({ error: "Ingrediente no encontrado" });
     }
   } catch (error) {
-    // 🔥 ERROR CONTROLADO (RECETAS)
+
     if (error.message.includes("No puedes eliminar")) {
       return res.status(400).json({
         error: error.message,
       });
     }
 
-    // 🔥 ERRORES DE BASE DE DATOS (FK)
     if (
       error.message.includes("violates foreign key constraint") ||
       error.message.includes("llave foránea") ||
@@ -149,9 +146,7 @@ exports.obtenerStockBajo = async (req, res) => {
   }
 };
 
-// =========================
-// Movimientos de Inventario
-// =========================
+
 exports.registrarMovimiento = async (req, res) => {
   try {
     const { ingrediente_id, tipo, cantidad, motivo, pedido_id } = req.body;
@@ -195,9 +190,7 @@ exports.obtenerMovimientos = async (req, res) => {
   }
 };
 
-// =========================
-// Productos Preparados
-// =========================
+
 exports.obtenerProductosPreparados = async (req, res) => {
   try {
     const productos = await ProductoPreparado.obtenerTodos();
@@ -207,7 +200,7 @@ exports.obtenerProductosPreparados = async (req, res) => {
   }
 };
 
-// ... otros requires
+
 
 exports.crearProductoPreparado = async (req, res) => {
   const client = await pool.connect();
@@ -225,7 +218,7 @@ exports.crearProductoPreparado = async (req, res) => {
     } = req.body;
     const nombreNormalizado = String(nombre || "").trim();
 
-    // 🧩 Validaciones básicas
+
     if (!Array.isArray(ingredientes) || ingredientes.length === 0) {
       return res.status(400).json({
         error:
@@ -233,7 +226,7 @@ exports.crearProductoPreparado = async (req, res) => {
       });
     }
 
-    // 1️⃣ Crear producto preparado
+
     const result = await client.query(
       `INSERT INTO productos_preparados (nombre, descripcion, unidad, stock_actual, stock_minimo)
        VALUES ($1, $2, $3, $4, $5)
@@ -243,7 +236,6 @@ exports.crearProductoPreparado = async (req, res) => {
 
     const productoPreparadoId = result.rows[0].id;
 
-    // 2️⃣ Insertar ingredientes en la receta
     for (const ing of ingredientes) {
       const ingredienteId = parseInt(ing.ingrediente_id);
       const cantidadPorUnidad = parseFloat(ing.cantidad);
@@ -262,7 +254,7 @@ exports.crearProductoPreparado = async (req, res) => {
         });
       }
 
-      // ✔ Agregar receta
+
       await client.query(
         `INSERT INTO recetas (producto_preparado_id, ingrediente_id, cantidad)
          VALUES ($1, $2, $3)`,
@@ -312,7 +304,6 @@ exports.actualizarProductoPreparado = async (req, res) => {
     } = req.body;
     const nombreNormalizado = String(nombre || "").trim();
 
-    // 1. Obtener receta actual
     const recetaActualResult = await client.query(
       `SELECT ingrediente_id, cantidad
        FROM recetas
@@ -330,7 +321,7 @@ exports.actualizarProductoPreparado = async (req, res) => {
       ingredientes.map((r) => [Number(r.ingrediente_id), Number(r.cantidad)]),
     );
 
-    // 2. Devolver diferencias al stock cuando se redujo o eliminó
+
     for (const [ingredienteId, cantidadActual] of actualMap.entries()) {
       const cantidadNueva = nuevaMap.get(ingredienteId);
 
@@ -366,7 +357,7 @@ exports.actualizarProductoPreparado = async (req, res) => {
       }
     }
 
-    // 3. Descontar diferencias cuando aumentó o es nuevo
+
     for (const [ingredienteId, cantidadNueva] of nuevaMap.entries()) {
       const cantidadActual = actualMap.get(ingredienteId);
 
@@ -431,7 +422,7 @@ exports.actualizarProductoPreparado = async (req, res) => {
       }
     }
 
-    // 4. Actualizar producto preparado
+
     const productoResult = await client.query(
       `UPDATE productos_preparados
        SET nombre = $1,
@@ -448,7 +439,7 @@ exports.actualizarProductoPreparado = async (req, res) => {
       throw new Error("Producto preparado no encontrado");
     }
 
-    // 5. Reemplazar receta
+
     await client.query(`DELETE FROM recetas WHERE producto_preparado_id = $1`, [
       id,
     ]);
@@ -548,9 +539,7 @@ exports.eliminarProductoPreparado = async (req, res) => {
   }
 };
 
-// =========================
-// Recetas
-// =========================
+
 exports.obtenerReceta = async (req, res) => {
   try {
     const { id } = req.params;
@@ -624,9 +613,7 @@ exports.eliminarRecetaPorProducto = async (req, res) => {
   }
 };
 
-// =========================
-// Preparar producto
-// =========================
+
 exports.prepararProducto = async (req, res) => {
   const client = await pool.connect();
   try {
@@ -644,7 +631,7 @@ exports.prepararProducto = async (req, res) => {
 
     await client.query("BEGIN");
 
-    // 1️⃣ Obtener el producto preparado
+
     const prepResult = await client.query(
       "SELECT * FROM productos_preparados WHERE id = $1",
       [productoId],
@@ -658,7 +645,7 @@ exports.prepararProducto = async (req, res) => {
         .json({ error: "Producto preparado no encontrado" });
     }
 
-    // 2️⃣ Obtener receta enlazada directamente al producto preparado
+
     const recetaDirectaResult = await client.query(
       `
       SELECT r.ingrediente_id, r.cantidad, i.stock_actual, i.nombre, i.unidad
@@ -669,7 +656,7 @@ exports.prepararProducto = async (req, res) => {
       [productoId],
     );
 
-    // Compatibilidad con datos antiguos: recetas enlazadas por productos.producto_preparado_id
+
     const recetaResult =
       recetaDirectaResult.rows.length > 0
         ? recetaDirectaResult
@@ -691,7 +678,7 @@ exports.prepararProducto = async (req, res) => {
         .json({ error: "Este producto no tiene receta asociada" });
     }
 
-    // 3️⃣ Verificar stock suficiente de ingredientes (cantidad fija de receta)
+
     for (const item of recetaResult.rows) {
       const descontar = Number(item.cantidad);
 
@@ -710,7 +697,7 @@ exports.prepararProducto = async (req, res) => {
       }
     }
 
-    // 4️⃣ Descontar ingredientes (cantidad fija de receta)
+
     for (const item of recetaResult.rows) {
       const descontar = Number(item.cantidad);
 
@@ -738,7 +725,6 @@ exports.prepararProducto = async (req, res) => {
       );
     }
 
-    // 5️⃣ Establecer stock final del producto preparado (no sumar)
     const updateProd = await client.query(
       `
       UPDATE productos_preparados
@@ -769,9 +755,7 @@ exports.prepararProducto = async (req, res) => {
   }
 };
 
-// =========================
-// Venta de productos
-// =========================
+
 exports.venderProductoPreparado = async (req, res) => {
   try {
     const { productoId, cantidad } = req.body;
@@ -801,9 +785,7 @@ exports.venderProductoPreparado = async (req, res) => {
   }
 };
 
-// =========================
-// Venta directa (ingredientes)
-// =========================
+
 exports.venderPlatoDirecto = async (req, res) => {
   const client = await pool.connect();
   try {
@@ -851,9 +833,7 @@ exports.venderPlatoDirecto = async (req, res) => {
   }
 };
 
-// =========================
-// Alertas de stock bajo
-// =========================
+
 exports.obtenerAlertasStock = async (req, res) => {
   try {
     const [ingredientesBajo, productosBajo] = await Promise.all([

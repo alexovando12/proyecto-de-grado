@@ -17,13 +17,9 @@ class ProductoPreparado {
     return result.rows[0];
   }
 
-  // =========================
-  // CREAR PRODUCTO PREPARADO
-  // =========================
   static async crear(producto) {
     let { nombre, descripcion, unidad, stock_actual, stock_minimo } = producto;
 
-    // 🔥 VALIDACIONES
     if (!nombre || typeof nombre !== 'string' || !nombre.trim()) {
       throw new Error('Nombre inválido');
     }
@@ -54,9 +50,6 @@ class ProductoPreparado {
     return result.rows[0];
   }
 
-  // =========================
-  // ACTUALIZAR PRODUCTO
-  // =========================
   static async actualizar(id, producto) {
     let { nombre, descripcion, unidad, stock_actual, stock_minimo } = producto;
 
@@ -90,12 +83,8 @@ class ProductoPreparado {
     return result.rows[0];
   }
 
-  // =========================
-  // ELIMINAR (VALIDADO)
-  // =========================
   static async eliminar(id) {
 
-    // 🔥 Validar si se usa en productos
     const uso = await pool.query(
       'SELECT 1 FROM productos WHERE producto_preparado_id = $1 LIMIT 1',
       [id]
@@ -113,9 +102,6 @@ class ProductoPreparado {
     return result.rows[0];
   }
 
-  // =========================
-  // PREPARAR PRODUCTO 🔥🔥🔥
-  // =========================
   static async preparar(id, cantidad) {
     const client = await pool.connect();
 
@@ -128,7 +114,6 @@ class ProductoPreparado {
         throw new Error('Cantidad inválida');
       }
 
-      // 🔥 Obtener receta
       const receta = await client.query(
         `SELECT r.ingrediente_id, r.cantidad, i.stock_actual, i.nombre, i.unidad
          FROM recetas r
@@ -141,7 +126,6 @@ class ProductoPreparado {
         throw new Error('Este producto no tiene receta');
       }
 
-      // 🔥 Validar stock
       for (const item of receta.rows) {
         const necesario = Number(item.cantidad) * cantidadNum;
 
@@ -152,7 +136,6 @@ class ProductoPreparado {
         }
       }
 
-      // 🔥 Descontar ingredientes
       for (const item of receta.rows) {
         const necesario = Number(item.cantidad) * cantidadNum;
 
@@ -164,7 +147,6 @@ class ProductoPreparado {
         );
       }
 
-      // 🔥 Aumentar producto preparado
       const result = await client.query(
         `UPDATE productos_preparados
          SET stock_actual = stock_actual + $1
@@ -185,9 +167,6 @@ class ProductoPreparado {
     }
   }
 
-  // =========================
-  // VENDER PRODUCTO
-  // =========================
   static async vender(id, cantidad) {
 
     const cantidadNum = Number(cantidad);

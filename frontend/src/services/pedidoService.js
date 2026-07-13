@@ -116,9 +116,7 @@ export const pedidoService = {
     }
   },
 
-  // =========================
-  // ELIMINAR PEDIDO 🔥🔥🔥
-  // =========================
+
   eliminar: async (id) => {
     try {
       const { data } = await api.delete(`/pedidos/${Number(id)}`);
@@ -128,9 +126,7 @@ export const pedidoService = {
     }
   },
 
-  // =========================
-  // ESTADOS
-  // =========================
+
   actualizarEstado: async (id, estado) => {
     try {
       const { data } = await api.put(`/pedidos/${Number(id)}/estado`, {
@@ -192,7 +188,7 @@ export const pedidoService = {
       return data;
     } catch (error) {
       console.warn("Error mesa", mesaId);
-      return []; // 🔥 EVITA QUE REVIENTE TODO
+      return [];
     }
   },
 };

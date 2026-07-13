@@ -2,9 +2,7 @@ import api from './api.js';
 
 export const inventarioService = {
 
-  // =========================
-  // INGREDIENTES
-  // =========================
+
   obtenerIngredientes: async () => {
     try {
       const response = await api.get('/inventario/ingredientes');
@@ -41,9 +39,7 @@ export const inventarioService = {
     }
   },
 
-  // =========================
-  // PRODUCTOS PREPARADOS
-  // =========================
+
   obtenerProductosPreparados: async () => {
     try {
       const response = await api.get('/inventario/productos-preparados');
@@ -69,7 +65,6 @@ export const inventarioService = {
         { productoId, cantidad }
       );
 
-      // 🔥 refresca inventario automáticamente
       window.dispatchEvent(new Event('inventarioActualizado'));
 
       return response.data;
@@ -96,9 +91,6 @@ export const inventarioService = {
     }
   },
 
-  // =========================
-  // ALERTAS Y MOVIMIENTOS
-  // =========================
   obtenerMovimientos: async () => {
     try {
       const response = await api.get('/inventario/movimientos');
