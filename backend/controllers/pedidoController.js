@@ -450,7 +450,9 @@ exports.actualizarPedido = async (req, res) => {
   }
 };
 
-
+/* ------------------------------------------
+   🔹 Eliminar pedido
+------------------------------------------- */
 exports.eliminarPedido = async (req, res) => {
   try {
     const { id } = req.params;
@@ -462,7 +464,9 @@ exports.eliminarPedido = async (req, res) => {
   }
 };
 
-
+/* ------------------------------------------
+   🔹 Obtener pedidos por mesa
+------------------------------------------- */
 exports.obtenerPedidosPorMesa = async (req, res) => {
   try {
     const { mesa_id } = req.params;
@@ -478,7 +482,9 @@ exports.obtenerPedidosPorMesa = async (req, res) => {
   }
 };
 
-
+/* ------------------------------------------
+   🔹 Obtener pedidos por estado
+------------------------------------------- */
 exports.obtenerPedidosPorEstado = async (req, res) => {
   try {
     const { estado } = req.params;
@@ -497,7 +503,9 @@ exports.obtenerPedidosPorEstado = async (req, res) => {
   }
 };
 
-
+/* ------------------------------------------
+   🔹 Actualizar estado de pedido
+------------------------------------------- */
 exports.actualizarEstadoPedido = async (req, res) => {
   const client = await pool.connect();
   try {
@@ -555,7 +563,7 @@ exports.actualizarEstadoPedido = async (req, res) => {
         [id],
       );
 
-
+      // En cancelación se libera la mesa.
       if (Number.isFinite(mesaIdPedido)) {
         await client.query(
           `UPDATE mesas SET estado = 'disponible' WHERE id = $1`,
@@ -564,7 +572,7 @@ exports.actualizarEstadoPedido = async (req, res) => {
       }
     }
 
-
+    // Al marcar el pedido como listo, todas sus lineas pasan a listo
     if (estadoDestino === "listo") {
       await client.query(
         `UPDATE detalles_pedido SET estado = 'listo' WHERE pedido_id = $1`,
@@ -572,7 +580,7 @@ exports.actualizarEstadoPedido = async (req, res) => {
       );
     }
 
-
+    // Recalcular total al entregar
     if (estadoDestino === "entregado") {
       const result = await client.query(
         `
@@ -587,7 +595,7 @@ exports.actualizarEstadoPedido = async (req, res) => {
       total = result.rows[0].total;
     }
 
-
+    // 🔥 actualizar pedido
     await client.query(
       `UPDATE pedidos
        SET estado = $1,
@@ -613,7 +621,9 @@ exports.actualizarEstadoPedido = async (req, res) => {
   }
 };
 
-
+/* ------------------------------------------
+   🔹 Actualizar estado de detalles puntuales
+------------------------------------------- */
 exports.actualizarEstadoDetallesPedido = async (req, res) => {
   const client = await pool.connect();
   try {
@@ -721,12 +731,14 @@ exports.actualizarEstadoDetallesPedido = async (req, res) => {
   }
 };
 
-
+/* ------------------------------------------
+   🔹 Actualizar detalles de un pedido (editar cantidades/agregar/eliminar)
+------------------------------------------- */
 exports.actualizarDetallesPedido = async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
-    const nuevosDetalles = req.body.detalles;
+    const nuevosDetalles = req.body.detalles; // lista completa desde frontend
 
     if (!Array.isArray(nuevosDetalles) || nuevosDetalles.length === 0) {
       return res
@@ -752,10 +764,10 @@ exports.actualizarDetallesPedido = async (req, res) => {
     const bloquearDetallesListos = estadoPedidoActual === "entregado";
     let huboCambios = false;
 
-
+    // Obtener detalles actuales
     const detallesActuales = await DetallePedido.obtenerPorPedido(id);
 
-
+    // Mapa para manejar diferencias
     const actualesMap = new Map(
       detallesActuales.map((d) => [
         construirClaveDetalle(d.producto_id, d.ingredientes_ajustes),
@@ -769,6 +781,7 @@ exports.actualizarDetallesPedido = async (req, res) => {
       ]),
     );
 
+    // 1. Eliminar productos que ya no están
     for (const [detalleKey, det] of actualesMap.entries()) {
       if (!nuevosMap.has(detalleKey)) {
         if (
@@ -782,7 +795,7 @@ exports.actualizarDetallesPedido = async (req, res) => {
           });
         }
 
-
+        // devolver stock
         await devolverStockProducto(
           client,
           det.producto_id,
@@ -796,7 +809,7 @@ exports.actualizarDetallesPedido = async (req, res) => {
       }
     }
 
-
+    // 2. Actualizar productos existentes
     for (const det of nuevosDetalles) {
       const detalleKey = construirClaveDetalle(
         det.producto_id,
@@ -918,7 +931,7 @@ exports.actualizarDetallesPedido = async (req, res) => {
       }
     }
 
-
+    // 3. Agregar productos nuevos
     for (const det of nuevosDetalles) {
       const detalleKey = construirClaveDetalle(
         det.producto_id,
@@ -969,7 +982,7 @@ exports.actualizarDetallesPedido = async (req, res) => {
       }
     }
 
-
+    // 4. Recalcular total
     const totalResult = await client.query(
       `SELECT COALESCE(SUM(cantidad * precio), 0) AS total
        FROM detalles_pedido
@@ -983,7 +996,7 @@ exports.actualizarDetallesPedido = async (req, res) => {
       id,
     ]);
 
-
+    // Solo pasamos a preparando si efectivamente cambió algo.
     if (huboCambios) {
       await client.query(
         `UPDATE pedidos
@@ -1009,7 +1022,9 @@ exports.actualizarDetallesPedido = async (req, res) => {
   }
 };
 
-
+/* ------------------------------------------
+   🔹 Editar pedido
+------------------------------------------- */
 exports.editarPedido = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1037,7 +1052,9 @@ exports.editarPedido = async (req, res) => {
   }
 };
 
-
+/* ------------------------------------------
+   🔹 Liberar mesa
+------------------------------------------- */
 exports.liberarMesa = async (req, res) => {
   const client = await pool.connect();
   try {
@@ -1065,6 +1082,7 @@ exports.liberarMesa = async (req, res) => {
       [id],
     );
 
+    // Al cerrar pedido se libera la mesa.
     if (Number.isFinite(mesaIdPedido)) {
       await client.query(
         `UPDATE mesas SET estado = 'disponible' WHERE id = $1`,
