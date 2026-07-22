@@ -5,21 +5,22 @@ static async obtenerPorEmail(email) {
   const result = await pool.query(
     `
       SELECT
-        u.id,
-        u.nombre,
-        u.email,
-        u.contrasena,
-        u.rol,
-        u.estado,
-        u.fecha_creacion
-      FROM public.usuarios u
-      WHERE u.email = $1
-        AND u.estado = true
+        id,
+        nombre,
+        email,
+        contrasena,
+        rol,
+        estado,
+        fecha_creacion
+      FROM public.usuarios
+      WHERE email = $1
+        AND estado = true
       LIMIT 1
     `,
-    [email],
+    [email]
   );
 
+  console.log("FILA USUARIO:", result.rows[0]);
   return result.rows[0];
 }
   static async obtenerTodos() {
