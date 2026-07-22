@@ -2,25 +2,42 @@ const pool = require("../config/db");
 
 class Usuario {
 static async obtenerPorEmail(email) {
+  const infoConexion = await pool.query(`
+    SELECT
+      current_database() AS database,
+      current_schema() AS schema,
+      current_user AS usuario,
+      inet_server_addr() AS servidor
+  `);
+
+  console.log("🔌 CONEXIÓN REAL:", infoConexion.rows[0]);
+
+  const columnas = await pool.query(`
+    SELECT
+      column_name,
+      data_type
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'usuarios'
+    ORDER BY ordinal_position
+  `);
+
+  console.log("📋 COLUMNAS REALES:", columnas.rows);
+
   const result = await pool.query(
     `
-      SELECT
-        id,
-        nombre,
-        email,
-        contrasena,
-        rol,
-        estado,
-        fecha_creacion
+      SELECT *
       FROM public.usuarios
       WHERE email = $1
         AND estado = true
       LIMIT 1
     `,
-    [email]
+    [email],
   );
 
-  console.log("FILA USUARIO:", result.rows[0]);
+  console.log("👤 USUARIO CRUDO:", result.rows[0]);
+  console.log("🔑 ROL CRUDO:", result.rows[0]?.rol);
+
   return result.rows[0];
 }
   static async obtenerTodos() {
