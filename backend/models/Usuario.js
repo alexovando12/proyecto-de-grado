@@ -6,6 +6,7 @@ class Usuario {
       "SELECT * FROM usuarios WHERE email = $1 AND estado = true",
       [email],
     );
+    console.log("🔬 COLUMNAS QUE TRAJO LA CONSULTA:", Object.keys(result.rows[0] || {})); // 👈 agrega esto
     return result.rows[0];
   }
 
