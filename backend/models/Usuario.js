@@ -1,14 +1,21 @@
 const pool = require("../config/db");
 
 class Usuario {
-  static async obtenerPorEmail(email) {
-    const result = await pool.query(
-      "SELECT * FROM usuarios WHERE email = $1 AND estado = true",
-      [email],
-    );
-    console.log("🔬 COLUMNAS QUE TRAJO LA CONSULTA:", Object.keys(result.rows[0] || {})); // 👈 agrega esto
-    return result.rows[0];
-  }
+static async obtenerPorEmail(email) {
+  const result = await pool.query(
+    `SELECT id, nombre, email, contrasena, rol, estado
+     FROM public.usuarios
+     WHERE email = $1
+       AND estado = true
+     LIMIT 1`,
+    [email],
+  );
+
+  console.log("FILA COMPLETA:", result.rows[0]);
+  console.log("ROL DIRECTO:", result.rows[0]?.rol);
+
+  return result.rows[0];
+}
 
   static async obtenerTodos() {
     const result = await pool.query(
