@@ -69,7 +69,7 @@ const InventarioPage = () => {
   });
 
   const [venderPlatoForm, setVenderPlatoForm] = useState({
-    ingredientes: [], // Array de { ingrediente_id, cantidad }
+    ingredientes: [], 
   });
 
   // Estado para la receta del producto preparado
