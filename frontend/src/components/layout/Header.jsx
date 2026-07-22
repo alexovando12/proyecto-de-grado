@@ -10,18 +10,18 @@ const ROLE_MODULES = {
     { to: "/productos", label: "Productos" },
     { to: "/pedidos", label: "Pedidos" },
     { to: "/cocina", label: "Cocina" },
-    { to: "/inventario", label: "Inventario" },
     { to: "/caja", label: "Caja" },
+    { to: "/inventario", label: "Inventario" },
   ],
   mozo: [{ to: "/pedidos", label: "Pedidos" }],
-  caja: [{ to: "/pedidos", label: "Pedidos" }],
+  caja: [{ to: "/caja", label: "Caja" }],
   cocina: [{ to: "/cocina", label: "Cocina" }],
 };
 
 const ROLE_DEFAULT_PATH = {
   admin: "/reportes",
   mozo: "/pedidos",
-  caja: "/pedidos",
+  caja: "/caja",
   cocina: "/cocina",
 };
 
