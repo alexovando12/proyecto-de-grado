@@ -26,9 +26,10 @@ const ROLE_DEFAULT_PATH = {
 
 const normalizeRole = (rol) => String(rol || "").toLowerCase();
 
+// 🔧 FIX: si el rol no es reconocido, devuelve null (no una ruta que puede volver a fallar)
 const getDefaultPathByRole = (rol) => {
   const normalizedRole = normalizeRole(rol);
-  return ROLE_DEFAULT_PATH[normalizedRole] || "/pedidos";
+  return ROLE_DEFAULT_PATH[normalizedRole] || null;
 };
 
 const LoadingScreen = () => (
@@ -62,7 +63,9 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     normalizedAllowedRoles.length > 0 &&
     !normalizedAllowedRoles.includes(userRole)
   ) {
-    return <Navigate to={getDefaultPathByRole(userRole)} replace />;
+    // 🔧 FIX: si no hay ruta segura para este rol, manda a login en vez de repetir la misma ruta
+    const fallback = getDefaultPathByRole(userRole);
+    return <Navigate to={fallback || "/"} replace />;
   }
 
   return (
@@ -84,7 +87,9 @@ const DashboardRedirect = () => {
     return <Navigate to="/" replace />;
   }
 
-  return <Navigate to={getDefaultPathByRole(user.rol)} replace />;
+  // 🔧 FIX
+  const fallback = getDefaultPathByRole(user.rol);
+  return <Navigate to={fallback || "/"} replace />;
 };
 
 const FallbackRedirect = () => {
@@ -98,7 +103,9 @@ const FallbackRedirect = () => {
     return <Navigate to="/" replace />;
   }
 
-  return <Navigate to={getDefaultPathByRole(user.rol)} replace />;
+  // 🔧 FIX
+  const fallback = getDefaultPathByRole(user.rol);
+  return <Navigate to={fallback || "/"} replace />;
 };
 
 function App() {
