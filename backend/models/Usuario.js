@@ -3,20 +3,25 @@ const pool = require("../config/db");
 class Usuario {
 static async obtenerPorEmail(email) {
   const result = await pool.query(
-    `SELECT id, nombre, email, contrasena, rol, estado
-     FROM public.usuarios
-     WHERE email = $1
-       AND estado = true
-     LIMIT 1`,
+    `
+      SELECT
+        u.id,
+        u.nombre,
+        u.email,
+        u.contrasena,
+        u.rol,
+        u.estado,
+        u.fecha_creacion
+      FROM public.usuarios u
+      WHERE u.email = $1
+        AND u.estado = true
+      LIMIT 1
+    `,
     [email],
   );
 
-  console.log("FILA COMPLETA:", result.rows[0]);
-  console.log("ROL DIRECTO:", result.rows[0]?.rol);
-
   return result.rows[0];
 }
-
   static async obtenerTodos() {
     const result = await pool.query(
       `SELECT id, nombre, email, contrasena, rol, estado, fecha_creacion
