@@ -247,6 +247,7 @@ const getEstadoColor = (estado) => {
               >
                 <option value="preparando">En Preparación</option>
                 <option value="listo">Listos para Entregar</option>
+                <option value="cancelado">Cancelados</option>
               </select>
               <input
                 type="date"
