@@ -57,22 +57,34 @@ const CocinaPage = () => {
       : [],
   });
 
-  const normalizarPedidoCocina = (pedido) => {
-    const base = normalizePedido(pedido);
-    const detallesCocina = filtrarDetallesCocina(base.detalles);
-    const totalDetalles = detallesCocina.length;
-    const totalListos = detallesCocina.filter(
-      (d) => String(d?.estado || "").toLowerCase() === "listo",
-    ).length;
-    const estadoModulo =
-      totalDetalles > 0 && totalListos === totalDetalles ? "listo" : "preparando";
+const normalizarPedidoCocina = (pedido) => {
+  const base = normalizePedido(pedido);
+  const detallesCocina = filtrarDetallesCocina(base.detalles);
 
-    return {
-      ...base,
-      detalles_modulo: detallesCocina,
-      estado_modulo: estadoModulo,
-    };
+  const totalDetalles = detallesCocina.length;
+
+  const totalListos = detallesCocina.filter(
+    (d) => String(d?.estado || "").toLowerCase() === "listo",
+  ).length;
+
+  const totalCancelados = detallesCocina.filter(
+    (d) => String(d?.estado || "").toLowerCase() === "cancelado",
+  ).length;
+
+  let estadoModulo = "preparando";
+
+  if (totalDetalles > 0 && totalCancelados === totalDetalles) {
+    estadoModulo = "cancelado";
+  } else if (totalDetalles > 0 && totalListos === totalDetalles) {
+    estadoModulo = "listo";
+  }
+
+  return {
+    ...base,
+    detalles_modulo: detallesCocina,
+    estado_modulo: estadoModulo,
   };
+};
 
   useEffect(() => {
     cargarPedidos();
@@ -191,16 +203,18 @@ const CocinaPage = () => {
     }
   };
 
-  const getEstadoColor = (estado) => {
-    switch (estado) {
-      case "preparando":
-        return "badge-primary";
-      case "listo":
-        return "badge-success";
-      default:
-        return "badge-secondary";
-    }
-  };
+const getEstadoColor = (estado) => {
+  switch (estado) {
+    case "preparando":
+      return "badge-primary";
+    case "listo":
+      return "badge-success";
+    case "cancelado":
+      return "badge-danger";
+    default:
+      return "badge-secondary";
+  }
+};
 
   const getDetalleEstadoClass = (estado) => {
     const estadoDetalle = String(estado || "").toLowerCase();
@@ -289,19 +303,25 @@ const CocinaPage = () => {
                   <p className="pedido-total">Total: {pedido.total} Bs</p>
                 </div>
 
-                <div className="pedido-actions">
-                  {pedido.estado_modulo === "preparando" && (
-                    <button
-                      className="btn btn-success"
-                      onClick={() => actualizarEstadoDetalles(pedido)}
-                      disabled={pedidoLoadingId === pedido.id}
-                    >
-                      {pedidoLoadingId === pedido.id
-                        ? "Cargando..."
-                        : "Marcar como Listo"}
-                    </button>
-                  )}
-                </div>
+<div className="pedido-actions">
+  {pedido.estado_modulo === "preparando" && (
+    <button
+      className="btn btn-success"
+      onClick={() => actualizarEstadoDetalles(pedido)}
+      disabled={pedidoLoadingId === pedido.id}
+    >
+      {pedidoLoadingId === pedido.id
+        ? "Cargando..."
+        : "Marcar como Listo"}
+    </button>
+  )}
+
+  {pedido.estado_modulo === "cancelado" && (
+    <div className="pedido-cancelado">
+      Pedido cancelado
+    </div>
+  )}
+</div>
               </div>
             ))}
           </div>
